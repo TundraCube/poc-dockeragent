@@ -112,10 +112,10 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
 /* Robot columns */
 .robot-col{
   width:130px;min-width:130px;display:flex;flex-direction:column;align-items:center;
-  padding:16px 8px 12px;position:sticky;top:0;
+  padding:16px 8px 12px;position:sticky;top:0;overflow:visible;
 }
-.robot-col.guesser-side{border-right:1px dashed var(--border)}
-.robot-col.thinker-side{border-left:1px dashed var(--border)}
+.robot-col.thinker-side{border-right:1px dashed var(--border)}
+.robot-col.guesser-side{border-left:1px dashed var(--border)}
 
 /* ── CSS Robot Characters ── */
 .robot-char{
@@ -480,7 +480,6 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
           <div class="agent-status-dot" id="referee-dot"></div>
           <div class="agent-status-text" id="referee-status">idle</div>
         </div>
-        <div class="strikes-display" id="referee-strikes">🧠 Strikes: 0/3</div>
       </div>
     </div>
 
@@ -504,34 +503,7 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
 
   <!-- COMIC STRIP -->
   <div class="comic-strip" id="comic-strip">
-    <!-- GUESSER ROBOT (CSS art) -->
-    <div class="robot-col guesser-side">
-      <div class="robot-char float" id="guesser-robot">
-        <div class="guesser-antenna"></div>
-        <div class="guesser-body"></div>
-        <div class="guesser-face">
-          <div class="guesser-eye"></div>
-          <div class="guesser-eye"></div>
-        </div>
-        <div class="guesser-tool"></div>
-        <div class="guesser-leg left"></div>
-        <div class="guesser-leg right"></div>
-      </div>
-      <div class="robot-label guesser">🔍 GUESSER</div>
-    </div>
-
-    <!-- GAME BOARD (center: speech bubbles + flow) -->
-    <div class="game-board" id="game-board">
-      <div class="board-header" id="board-header">
-        <span class="turn-disp" id="turn-disp">Turn: --</span>
-        <span class="strike-disp" id="strike-disp">🧠 0/3 strikes</span>
-      </div>
-      <div class="board-empty" id="board-empty">
-        Select models and click Start<br>to watch two AI agents play 20 Questions.
-      </div>
-    </div>
-
-    <!-- THINKER ROBOT (CSS art) -->
+    <!-- THINKER ROBOT (left) -->
     <div class="robot-col thinker-side">
       <div class="robot-char float" id="thinker-robot">
         <div class="thinker-bulb glow" id="thinker-bulb"></div>
@@ -546,6 +518,33 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
       </div>
       <div class="robot-label thinker">🧠 THINKER</div>
       <div class="robot-strikes" id="thinker-strikes"></div>
+    </div>
+
+    <!-- GAME BOARD (center) -->
+    <div class="game-board" id="game-board">
+      <div class="board-header" id="board-header">
+        <span class="turn-disp" id="turn-disp">Turn: --</span>
+        <span class="strike-disp" id="strike-disp">🧠 0/3 strikes</span>
+      </div>
+      <div class="board-empty" id="board-empty">
+        Select models and click Start<br>to watch two AI agents play 20 Questions.
+      </div>
+    </div>
+
+    <!-- GUESSER ROBOT (right) -->
+    <div class="robot-col guesser-side">
+      <div class="robot-char float" id="guesser-robot">
+        <div class="guesser-antenna"></div>
+        <div class="guesser-body"></div>
+        <div class="guesser-face">
+          <div class="guesser-eye"></div>
+          <div class="guesser-eye"></div>
+        </div>
+        <div class="guesser-tool"></div>
+        <div class="guesser-leg left"></div>
+        <div class="guesser-leg right"></div>
+      </div>
+      <div class="robot-label guesser">🔍 GUESSER</div>
     </div>
   </div>
 
@@ -580,7 +579,6 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
   const strikeDisp = document.getElementById('strike-disp');
   const thinkerStrikes = document.getElementById('thinker-strikes');
   const thinkerStrikesDisplay = document.getElementById('thinker-strikes-display');
-  const refereeStrikes = document.getElementById('referee-strikes');
   const guesserRobot = document.getElementById('guesser-robot');
   const thinkerRobot = document.getElementById('thinker-robot');
   const thinkerBulb = document.getElementById('thinker-bulb');
@@ -671,16 +669,12 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
     }
     thinkerStrikes.textContent = currentStrikes > 0 ? ('⚠️ ' + currentStrikes + '/3 strikes') : '';
     thinkerStrikesDisplay.textContent = '🧠 Strikes: ' + currentStrikes + '/3';
-    refereeStrikes.textContent = '🧠 Strikes: ' + currentStrikes + '/3';
 
     thinkerStrikesDisplay.className = 'strikes-display';
-    refereeStrikes.className = 'strikes-display';
     if (currentStrikes >= 2) {
       thinkerStrikesDisplay.className += ' danger';
-      refereeStrikes.className += ' danger';
     } else if (currentStrikes > 0) {
       thinkerStrikesDisplay.className += ' warn';
-      refereeStrikes.className += ' warn';
     }
 
     if (currentStrikes >= 2) {
@@ -739,15 +733,16 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
   }
 
   function addRefereeMsg(text) {
-    boardEmpty.style.display = 'none';
-    const row = document.createElement('div');
-    row.className = 'speech-row referee-row';
-    row.innerHTML = '<div class="speech-bubble referee-bub">' +
-      '<div>' + escapeHtml(text) + '</div>' +
-      '</div>';
-    gameBoard.appendChild(row);
-    gameBoard.scrollTop = gameBoard.scrollHeight;
-  }
+      boardEmpty.style.display = 'none';
+      const row = document.createElement('div');
+      row.className = 'speech-row referee-row';
+      const bub = document.createElement('div');
+      bub.className = 'speech-bubble referee-bub';
+      bub.textContent = text;
+      row.appendChild(bub);
+      gameBoard.appendChild(row);
+      gameBoard.scrollTop = gameBoard.scrollHeight;
+    }
 
   function showOverlay(category, emoji, word) {
     if (overlayTimer) clearTimeout(overlayTimer);
@@ -868,10 +863,10 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
   });
 
   es.addEventListener('concept', function(e) {
-    const d = JSON.parse(e.data);
-    showOverlay(d.category, d.emoji);
-    addRefereeMsg('The Thinker has chosen a concept from the <strong>' + d.category + '</strong> category. Let the questions begin!');
-    setAgentStatus(thinkerCard, thinkerDot, thinkerStatus, 'ready', false);
+      const d = JSON.parse(e.data);
+      showOverlay(d.category, d.emoji);
+      addRefereeMsg('The Thinker has chosen a concept from the ' + d.category + ' category. Let the questions begin!');
+      setAgentStatus(thinkerCard, thinkerDot, thinkerStatus, 'ready', false);
     setAgentStatus(refereeCard, refereeDot, refereeStatus, 'orchestrating', false);
     setA2aFlow('Referee <span class="a2a-arrow">→</span> <span class="a2a-agent guesser-a">Guesser</span>: <span class="a2a-text">Your turn</span>');
   });
