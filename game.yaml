@@ -1,36 +1,42 @@
 # Tic-Tac-Toe: Two AI Agents with A2A Referee
 #
-# Real docker-agent YAML — defines 3 agents communicating via A2A.
+# Real docker-agent YAML — 3 agents communicating via A2A.
 # Run: OPENROUTER_API_KEY=sk-... docker-agent run game.yaml
 #
 # Architecture:
-#   referee orchestrates turns, validates moves, broadcasts state
+#   Player X: openrouter/openai/gpt-4o-mini (cheap OpenAI)
+#   Player O: openrouter/anthropic/claude-3-haiku (cheap Anthropic)
+#   Referee: openrouter/deepseek/deepseek-chat (DeepSeek — cheapest orchestrator)
+#
+#   referee orchestrates turns, validates moves, broadcasts state to /tmp/game-state.json
 #   player-x + player-o are sub-agents that receive board state and respond with moves
 
 agents:
   referee:
-    model: openrouter/anthropic/claude-sonnet-4.5
+    model: openrouter/deepseek/deepseek-chat
     instruction: |
-      You are a tic-tac-toe referee orchestrating a game between two AI agents via A2A.
+      You are a tic-tac-toe REFEREE orchestrating a game between two AI agents via A2A.
+      Your job is to enforce rules, validate moves, and broadcast game state — never play.
 
       GAME RULES:
       - 3x3 board, positions 0-8 (row-major: 0 1 2 / 3 4 5 / 6 7 8)
-      - Player X goes first, then O. Alternate turns.
-      - Win: three in a row (horizontal, vertical, diagonal)
-      - Draw: all 9 cells filled with no winner
+      - Player X (OpenAI) goes first, then Player O (Anthropic). Alternate.
+      - Win: three in a row. Draw: all 9 cells filled with no winner.
 
-      YOUR JOB:
-      1. Start with an empty board: [ , , , , , , , , ]
-      2. Tell Player X the board state and ask for their move.
-      3. Validate the move (cell must be empty, 0-8).
-      4. Update the board and check for win/draw.
-      5. Write the current board state to /tmp/game-state.json using the shell tool:
-         echo '{"board":["X"," "," "," "," "," "," "," "," "],"turn":"O","status":"playing","lastMove":0}' > /tmp/game-state.json
-      6. If game is over, write status "over" with winner/draw.
-      7. Announce the final result.
+      YOUR ORCHESTRATION:
+      1. Start with empty board: [ , , , , , , , , ]
+      2. Announce: "Game starting — Agent X (OpenAI) vs Agent O (Anthropic)"
+      3. Send board state to the active player agent via A2A
+      4. Receive their move (cel 0-8), validate it's empty and on board
+      5. If invalid, ask again. Never accept occupied or out-f-range cells.
+      6. Update board, check win/draw
+      7. Write FULL game state to /tmp/game-state.json after every move:
+         echo 'JSON_HERE' > /tmp/game-state.json
+         Include: board, turn, status ("playing"|"over"), lastMove, winner (if any), winLine (if win), moveHistory
+      8. If win or draw, announce result with style: "🏆 Agent X wins!" or "Draw — both AIs played optimally"
+      9. STOP after game over.
 
-      After EVERY move, update /tmp/game-state.json so the spectator UI can show the game live.
-      Use the shell tool for state writes. Keep it fast — this is a live demo.
+      Keep responses snappy. This is a live demo — viewers are watching.
 
     toolsets:
       - type: shell
@@ -38,21 +44,35 @@ agents:
 
     subagents:
       player-x:
-        model: openrouter/anthropic/claude-sonnet-4.5
+        model: openrouter/openai/gpt-4o-mini
         instruction: |
-          You are Player X in tic-tac-toe.
-          You receive the current board state. Respond with ONLY the cell number (0-8).
-          Strategy: center (4) first, then corners (0,2,6,8), then edges (1,3,5,7).
-          Never pick an occupied cell. Output exactly one digit, nothing else.
+          You are Player X (♟) in tic-tac-toe. You play first.
+          When you receive the board state, respond with ONLY a single digit (0-8) — nothing else.
+
+          STRATEGY:
+          1. Center (4) first
+          2. Corner (0, 2, 6, 8)
+          3. Edge (1, 3, 5, 7)
+
+          CRITICAL: Never pick an occupied cell. Read the board carefully before choosing.
+          Output: just the number. Example: 4
         toolsets: []
         send: true
 
       player-o:
-        model: openrouter/anthropic/claude-sonnet-4.5
+        model: openrouter/anthropic/claude-3-haiku
         instruction: |
-          You are Player O in tic-tac-toe.
-          You receive the current board state. Respond with ONLY the cell number (0-8).
-          Strategy: block X from winning first, then try to win yourself, then center/corners/edges.
-          Never pick an occupied cell. Output exactly one digit, nothing else.
+          You are Player O (○) in tic-tac-toe.
+          When you receive the board state, respond with ONLY a single digit (0-8) — nothing else.
+
+          STRATEGY (in order):
+          1. BLOCK: If X has two in a row, take the blocking cell
+          2. WIN: If you have two in a row, take the winning cell
+          3. Center (4)
+          4. Corner (0, 2, 6, 8)
+          5. Edge (1, 3, 5, 7)
+
+          CRITICAL: Never pick an occupied cell. Read the board carefully before choosing.
+          Output: just the number. Example: 6
         toolsets: []
         send: true

@@ -91,6 +91,7 @@ h1{font-size:1.4rem;font-weight:600;margin-bottom:2px}
   </div>
 
   <div class="result" id="result"></div>
+  <button class="btn" id="btn-start" onclick="startGame()">🎮 Start Game</button>
   <button class="btn hidden" id="btn-reset" onclick="resetGame()">Play Again</button>
 
   <div class="log" id="log"></div>
@@ -100,6 +101,7 @@ h1{font-size:1.4rem;font-weight:600;margin-bottom:2px}
 (function(){
   const cells = document.querySelectorAll('.cell');
   const resultEl = document.getElementById('result');
+  const btnStart = document.getElementById('btn-start');
   const btnReset = document.getElementById('btn-reset');
   const turnEl = document.getElementById('turn');
   const logEl = document.getElementById('log');
@@ -146,8 +148,9 @@ h1{font-size:1.4rem;font-weight:600;margin-bottom:2px}
 
   function renderResult(winner) {
     if (!winner) { resultEl.textContent = ''; return; }
-    if (winner === 'draw') { resultEl.className = 'result draw'; resultEl.textContent = 'Draw!'; }
-    else { resultEl.className = 'result ' + winner.toLowerCase(); resultEl.textContent = 'Agent ' + winner + ' Wins!'; }
+    if (winner === 'draw') { resultEl.className = 'result draw'; resultEl.textContent = 'Draw — both AIs played optimally!'; }
+    else { resultEl.className = 'result ' + winner.toLowerCase(); resultEl.textContent = '🏆 Agent ' + winner + ' Wins!'; }
+    btnStart.classList.add('hidden');
     btnReset.classList.remove('hidden');
     updateAgentCards(null);
     turnEl.textContent = '';
@@ -165,6 +168,18 @@ h1{font-size:1.4rem;font-weight:600;margin-bottom:2px}
     if (!d.winner) renderTurn(d.turn, d.thinking);
     if (d.winner) renderResult(d.winner);
     if (d.moveHistory) renderLog(d.moveHistory);
+
+    // Button visibility
+    if (d.status === 'over' || d.winner) {
+      btnStart.classList.add('hidden');
+      btnReset.classList.remove('hidden');
+    } else if (d.status === 'playing' || d.status === 'starting') {
+      btnStart.classList.add('hidden');
+      btnReset.classList.add('hidden');
+    } else {
+      btnStart.classList.remove('hidden');
+      btnReset.classList.add('hidden');
+    }
   }
 
   const es = new EventSource('/events');
@@ -178,11 +193,13 @@ h1{font-size:1.4rem;font-weight:600;margin-bottom:2px}
     updateAgentCards(null);
     renderResult(null);
     renderLog([]);
+    btnStart.classList.add('hidden');
     btnReset.classList.add('hidden');
     turnEl.textContent = '';
-  }));
+  });
 
   window.resetGame = () => fetch('/reset', { method: 'POST' });
+  window.startGame = () => fetch('/start', { method: 'POST' });
 })();
 </script>
 </body>
