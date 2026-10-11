@@ -278,6 +278,7 @@ async function runGame(thinkerModel, guesserModel) {
     gs.thinking = null;
 
     if (answer === 'CORRECT') {
+      gs.status = 'over';
       gs.winner = 'guesser';
       gs.concept = { category: concept.category, emoji: concept.emoji, word: concept.word };
       broadcast('gameover', { ...gs, concept: { category: concept.category, emoji: concept.emoji, word: concept.word } });
@@ -289,6 +290,7 @@ async function runGame(thinkerModel, guesserModel) {
   }
 
   // Out of turns — Thinker wins
+  gs.status = 'over';
   gs.winner = 'thinker';
   gs.concept = { category: concept.category, emoji: concept.emoji, word: concept.word };
   broadcast('gameover', { ...gs, concept: { category: concept.category, emoji: concept.emoji, word: concept.word } });
