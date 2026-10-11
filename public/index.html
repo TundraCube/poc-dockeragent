@@ -109,21 +109,25 @@ h1{font-size:1.4rem;font-weight:600;margin-bottom:2px}
   const cardO = document.getElementById('card-o');
   const cardRef = document.getElementById('card-ref');
 
-  function updateAgentCards(thinking) {
+  function updateAgentCards(thinking, status, winner) {
     [cardX, cardO, cardRef].forEach(c => { c.classList.remove('active'); c.querySelector('.dot').classList.remove('pulse'); });
     cardX.querySelector('.txt').textContent = 'idle';
     cardO.querySelector('.txt').textContent = 'idle';
     cardRef.querySelector('.txt').textContent = 'idle';
 
+    if (winner) return; // all idle on game over
+
     if (thinking === 'X') {
       cardX.classList.add('active'); cardX.querySelector('.dot').classList.add('pulse');
       cardX.querySelector('.txt').textContent = 'thinking...';
+      cardRef.querySelector('.txt').textContent = 'awaiting';
     } else if (thinking === 'O') {
       cardO.classList.add('active'); cardO.querySelector('.dot').classList.add('pulse');
       cardO.querySelector('.txt').textContent = 'thinking...';
-    } else if (thinking === 'referee') {
+      cardRef.querySelector('.txt').textContent = 'awaiting';
+    } else if (status === 'playing' || status === 'starting') {
       cardRef.classList.add('active'); cardRef.querySelector('.dot').classList.add('pulse');
-      cardRef.querySelector('.txt').textContent = 'running';
+      cardRef.querySelector('.txt').textContent = 'orchestrating';
     }
   }
 
@@ -152,7 +156,7 @@ h1{font-size:1.4rem;font-weight:600;margin-bottom:2px}
     else { resultEl.className = 'result ' + winner.toLowerCase(); resultEl.textContent = '🏆 Agent ' + winner + ' Wins!'; }
     btnStart.classList.add('hidden');
     btnReset.classList.remove('hidden');
-    updateAgentCards(null);
+    updateAgentCards(null, null, 'over');
     turnEl.textContent = '';
   }
 
@@ -164,7 +168,7 @@ h1{font-size:1.4rem;font-weight:600;margin-bottom:2px}
 
   function handleState(d) {
     renderBoard(d.board, d.lastMove, d.winLine);
-    updateAgentCards(d.thinking);
+    updateAgentCards(d.thinking, d.status, d.winner);
     if (!d.winner) renderTurn(d.turn, d.thinking);
     if (d.winner) renderResult(d.winner);
     if (d.moveHistory) renderLog(d.moveHistory);

@@ -140,13 +140,18 @@ async function runGame() {
   gs.turn = 'X'; gs.status = 'starting'; gs.thinking = 'referee';
   gs.lastMove = null; gs.winner = null; gs.winLine = null; gs.moveHistory = [];
   gs.gameCount++;
-  emit({});
+  emit({ status: 'starting', thinking: 'referee' });
 
-  await sleep(1200);
+  await sleep(1500);
 
   while (gs.status !== 'over') {
-    emit({ thinking: gs.turn, lastMove: null, status: 'playing' });
-    await sleep(500);
+    // Referee sends board to agent — visible orchestration
+    emit({ thinking: 'referee', lastMove: null, status: 'playing' });
+    await sleep(600);
+
+    // Agent is consultd
+    emit({ thinking: gs.turn, lastMove: null });
+    await sleep(400);
 
     const lm = gs.moveHistory.length ? gs.moveHistory[gs.moveHistory.length - 1].cell : null;
     let cell = API_KEY ? await askAgent(gs.turn, gs.board, lm) : null;
@@ -159,14 +164,15 @@ async function runGame() {
     gs.board[cell] = gs.turn;
     gs.moveHistory.push({ player: gs.turn, cell });
 
+    // Referee validates and broadcasts
     const result = checkWinner(gs.board);
     if (result) {
-      emit({ thinking: null, lastMove: cell, winner: result.winner, winLine: result.line, status: 'over' });
+      emit({ thinking: 'referee', lastMove: cell, winner: result.winner, winLine: result.line, status: 'over' });
       console.log(`Game: ${result.winner === 'draw' ? 'Draw' : AGENTS[result.winner].name + ' wins'}`);
       break;
     }
 
-    emit({ thinking: null, lastMove: cell });
+    emit({ thinking: 'referee', lastMove: cell });
     await sleep(300);
     gs.turn = gs.turn === 'X' ? 'O' : 'X';
   }
@@ -174,6 +180,11 @@ async function runGame() {
 }
 
 app.post('/start', (req, res) => {
+  res.json({ ok: true });
+  runGame();
+});
+
+app.post('/reset', (req, res) => {
   res.json({ ok: true });
   runGame();
 });
