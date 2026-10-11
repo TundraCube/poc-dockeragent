@@ -33,15 +33,15 @@ let gameRunning = false;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-function broadcast(payload) {
-  const line = `data: ${JSON.stringify(payload)}\n\n`;
-  for (const c of clients) c.write(line);
+function broadcast(eventName, data) {
+  const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const c of clients) c.write(payload);
 }
 
 app.get('/events', (req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
   clients.add(res);
-  broadcast({ event: 'sync', ...gs });
+  broadcast('sync', gs);
   req.on('close', () => clients.delete(res));
 });
 
@@ -122,10 +122,14 @@ function checkWinner(b) {
 
 function emit(overrides) {
   Object.assign(gs, overrides);
-  const ev = gs.status === 'over' ? 'gameover' : gs.thinking ? 'thinking' : 'move';
-  broadcast({ event: ev, board: [...gs.board], turn: gs.turn, status: gs.status,
+  const eventName = gs.status === 'over' ? 'gameover'
+    : gs.status === 'starting' ? 'reset'
+    : gs.thinking ? 'thinking' : 'move';
+  broadcast(eventName, {
+    board: [...gs.board], turn: gs.turn, status: gs.status,
     thinking: gs.thinking, lastMove: gs.lastMove, winner: gs.winner, winLine: gs.winLine,
-    moveHistory: [...gs.moveHistory], gameCount: gs.gameCount, agents: AGENTS });
+    moveHistory: [...gs.moveHistory], gameCount: gs.gameCount, agents: AGENTS
+  });
 }
 
 async function runGame() {

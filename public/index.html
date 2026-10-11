@@ -183,7 +183,13 @@ h1{font-size:1.4rem;font-weight:600;margin-bottom:2px}
   }
 
   const es = new EventSource('/events');
-  es.addEventListener('sync', e => handleState(JSON.parse(e.data)));
+  console.log('SSE connecting...');
+
+  es.onopen = () => console.log('SSE connected ✓');
+  es.addEventListener('sync', e => {
+    console.log('SSE sync received:', e.data.slice(0,80));
+    handleState(JSON.parse(e.data));
+  });
   es.addEventListener('move', e => handleState(JSON.parse(e.data)));
   es.addEventListener('thinking', e => handleState(JSON.parse(e.data)));
   es.addEventListener('gameover', e => handleState(JSON.parse(e.data)));
