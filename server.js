@@ -11,63 +11,48 @@ let API_KEY = null;
 try { API_KEY = fs.readFileSync('/home/openclaw/prototypage_key.config', 'utf8').trim(); } catch(e) {}
 if (!API_KEY) console.warn('No API key — games will use fallback heuristics');
 
-// ── 50 concepts ──────────────────────────────────────────────────
+// ── 35 tangible concepts ──────────────────────────────────────────
 const CONCEPTS = [
-  // Animals
+  // Animals (7)
   { word: 'elephant', category: 'Animal', emoji: '🐘' },
   { word: 'dolphin', category: 'Animal', emoji: '🐬' },
   { word: 'penguin', category: 'Animal', emoji: '🐧' },
   { word: 'octopus', category: 'Animal', emoji: '🐙' },
   { word: 'giraffe', category: 'Animal', emoji: '🦒' },
   { word: 'eagle', category: 'Animal', emoji: '🦅' },
-  { word: 'chameleon', category: 'Animal', emoji: '🦎' },
-  { word: 'spider', category: 'Animal', emoji: '🕷️' },
-  { word: 'kangaroo', category: 'Animal', emoji: '🦘' },
   { word: 'butterfly', category: 'Animal', emoji: '🦋' },
-  // Objects
+  // Objects (7)
   { word: 'telescope', category: 'Object', emoji: '🔭' },
   { word: 'compass', category: 'Object', emoji: '🧭' },
-  { word: 'hourglass', category: 'Object', emoji: '⏳' },
   { word: 'microscope', category: 'Object', emoji: '🔬' },
-  { word: 'lighthouse', category: 'Object', emoji: '🏛️' },
   { word: 'camera', category: 'Object', emoji: '📷' },
   { word: 'guitar', category: 'Object', emoji: '🎸' },
-  { word: 'anchor', category: 'Object', emoji: '⚓' },
   { word: 'bicycle', category: 'Object', emoji: '🚲' },
   { word: 'keyboard', category: 'Object', emoji: '⌨️' },
-  // Nature
+  // Nature (7)
   { word: 'volcano', category: 'Nature', emoji: '🌋' },
   { word: 'waterfall', category: 'Nature', emoji: '🏞️' },
   { word: 'rainbow', category: 'Nature', emoji: '🌈' },
   { word: 'coral reef', category: 'Nature', emoji: '🪸' },
-  { word: 'aurora', category: 'Nature', emoji: '🌌' },
   { word: 'glacier', category: 'Nature', emoji: '🧊' },
   { word: 'sunflower', category: 'Nature', emoji: '🌻' },
-  { word: 'mushroom', category: 'Nature', emoji: '🍄' },
   { word: 'lightning', category: 'Nature', emoji: '⚡' },
-  { word: 'tornado', category: 'Nature', emoji: '🌪️' },
-  // Food
+  // Food (7)
   { word: 'sushi', category: 'Food', emoji: '🍣' },
   { word: 'pizza', category: 'Food', emoji: '🍕' },
   { word: 'watermelon', category: 'Food', emoji: '🍉' },
   { word: 'croissant', category: 'Food', emoji: '🥐' },
-  { word: 'honey', category: 'Food', emoji: '🍯' },
-  { word: 'popcorn', category: 'Food', emoji: '🍿' },
   { word: 'chocolate', category: 'Food', emoji: '🍫' },
-  { word: 'avocado', category: 'Food', emoji: '🥑' },
   { word: 'cheese', category: 'Food', emoji: '🧀' },
   { word: 'taco', category: 'Food', emoji: '🌮' },
-  // Abstract
-  { word: 'gravity', category: 'Abstract', emoji: '🌍' },
-  { word: 'democracy', category: 'Abstract', emoji: '🗳️' },
-  { word: 'infinity', category: 'Abstract', emoji: '♾️' },
-  { word: 'friendship', category: 'Abstract', emoji: '🤝' },
-  { word: 'time', category: 'Abstract', emoji: '⏰' },
-  { word: 'music', category: 'Abstract', emoji: '🎵' },
-  { word: 'justice', category: 'Abstract', emoji: '⚖️' },
-  { word: 'memory', category: 'Abstract', emoji: '🧠' },
-  { word: 'courage', category: 'Abstract', emoji: '🦁' },
-  { word: 'dream', category: 'Abstract', emoji: '💭' },
+  // Places (7)
+  { word: 'beach', category: 'Place', emoji: '🏖️' },
+  { word: 'mountain', category: 'Place', emoji: '🏔️' },
+  { word: 'desert', category: 'Place', emoji: '🏜️' },
+  { word: 'forest', category: 'Place', emoji: '🌲' },
+  { word: 'library', category: 'Place', emoji: '📚' },
+  { word: 'airport', category: 'Place', emoji: '✈️' },
+  { word: 'school', category: 'Place', emoji: '🏫' },
 ];
 
 // ── State ────────────────────────────────────────────────────────
@@ -83,6 +68,7 @@ function freshState() {
     winner: null,
     thinking: null,
     gameCount: 0,
+    strikes: 0,
   };
 }
 
@@ -162,7 +148,7 @@ ASK STRATEGIC yes/no questions to narrow down the concept. Avoid repeating previ
 Be creative — ask about properties, categories, typical locations, materials, sizes, common uses.
 Do NOT guess the answer until you are very confident.
 
-The concept belongs to one of these categories: Animal, Object, Nature, Food, Abstract.
+The concept belongs to one of these categories: Animal, Object, Nature, Food, Place.
 
 Reply with ONLY your question, ending with a question mark. Never include explanations.`;
 
@@ -183,6 +169,7 @@ Rules for answering:
 2. If the question is ambiguous, answer based on the most common interpretation of the secret concept.
 3. If the Guesser names the exact word, answer "CORRECT" and nothing else.
 4. Keep answers short: just "YES", "NO", or "CORRECT".
+5. Never lie — the Referee will validate your answers.
 
 Never reveal the word unless the Guesser guesses it exactly. Never give hints beyond yes/no.`;
 
@@ -194,18 +181,37 @@ Never reveal the word unless the Guesser guesses it exactly. Never give hints be
   if (upper.startsWith('YES')) return 'YES';
   if (upper.startsWith('NO')) return 'NO';
   if (upper.includes('CORRECT')) return 'CORRECT';
-  // Best-effort: pick first word
   if (upper === 'Y') return 'YES';
   if (upper === 'N') return 'NO';
   return upper;
 }
 
-// ── Game loop ────────────────────────────────────────────────────
+// ── Referee validation ───────────────────────────────────────────
+async function validateAnswer(concept, question, answer, model) {
+  if (!API_KEY) return true; // no API key — trust the Thinker
+  if (answer === 'CORRECT') return true;
+
+  const system = `You are a referee in a 20 Questions game. The Thinker has chosen a secret concept and must answer questions truthfully. Your job is to detect lies.`;
+
+  const user = `The secret concept is: "${concept.word}" (category: ${concept.category}).
+
+The Guesser asked: "${question}"
+The Thinker answered: "${answer}"
+
+Based on the secret concept, was the Thinker's answer truthful? 
+Respond with ONLY one word: YES or NO.`;
+
+  const result = await callLLM(model, system, user, 10);
+  if (!result) return true; // LLM failed — benefit of the doubt
+  const clean = result.toUpperCase().trim();
+  return clean.startsWith('YES');
+}
+
+// ─ Game loop ────────────────────────────────────────────────────
 async function runGame(thinkerModel, guesserModel) {
   if (gameRunning) return;
   gameRunning = true;
 
-  // Pick random concept
   const concept = CONCEPTS[Math.floor(Math.random() * CONCEPTS.length)];
 
   gs.status = 'playing';
@@ -213,11 +219,12 @@ async function runGame(thinkerModel, guesserModel) {
   gs.guesserModel = guesserModel || 'openai/gpt-4o-mini';
   gs.currentTurn = 0;
   gs.maxTurns = 20;
-  gs.concept = null; // hidden from clients until game over
+  gs.concept = null;
   gs.history = [];
   gs.winner = null;
   gs.thinking = 'referee';
   gs.gameCount++;
+  gs.strikes = 0;
 
   broadcast('sync', gs);
 
@@ -229,7 +236,7 @@ async function runGame(thinkerModel, guesserModel) {
   // Reveal category (not word) via concept popup
   gs.concept = { category: concept.category, emoji: concept.emoji, word: null };
   broadcast('concept', { category: concept.category, emoji: concept.emoji });
-  await sleep(3000); // time for popup animation + display
+  await sleep(3000);
 
   gs.thinking = null;
   broadcast('thinking', gs);
@@ -237,6 +244,13 @@ async function runGame(thinkerModel, guesserModel) {
   // 20 turns
   for (let turn = 1; turn <= 20; turn++) {
     gs.currentTurn = turn;
+
+    // Check if game was stopped
+    if (!gameRunning) {
+      gs = freshState();
+      broadcast('reset', gs);
+      return;
+    }
 
     // ── GUESSER ASKS ──
     gs.thinking = 'guesser';
@@ -253,8 +267,8 @@ async function runGame(thinkerModel, guesserModel) {
       return;
     }
 
-    gs.history.push({ turn, question, answer: null });
-    broadcast('question', { turn, question, agent: 'guesser' });
+    gs.history.push({ turn, question, answer: null, strike: false });
+    broadcast('question', { turn, question, agent: 'guesser', strikes: gs.strikes });
     gs.thinking = null;
     await sleep(800);
 
@@ -274,14 +288,57 @@ async function runGame(thinkerModel, guesserModel) {
     }
 
     gs.history[gs.history.length - 1].answer = answer;
-    broadcast('answer', { turn, answer, agent: 'thinker' });
-    gs.thinking = null;
 
     if (answer === 'CORRECT') {
+      gs.history[gs.history.length - 1].strike = false;
+      broadcast('answer', { turn, answer, agent: 'thinker', strikes: gs.strikes, strike: false });
+      gs.thinking = null;
+      await sleep(600);
+
       gs.status = 'over';
       gs.winner = 'guesser';
       gs.concept = { category: concept.category, emoji: concept.emoji, word: concept.word };
-      broadcast('gameover', { ...gs, concept: { category: concept.category, emoji: concept.emoji, word: concept.word } });
+      broadcast('gameover', {
+        ...gs,
+        concept: { category: concept.category, emoji: concept.emoji, word: concept.word },
+        reason: 'guessed',
+      });
+      gameRunning = false;
+      return;
+    }
+
+    // ── REFEREE VALIDATES ──
+    gs.thinking = 'referee';
+    broadcast('thinking', { ...gs, agent: 'referee' });
+    await sleep(600);
+
+    const truthful = await validateAnswer(concept, question, answer, gs.guesserModel);
+
+    if (!truthful) {
+      gs.strikes++;
+      gs.history[gs.history.length - 1].strike = true;
+    }
+
+    broadcast('answer', {
+      turn,
+      answer,
+      agent: 'thinker',
+      strikes: gs.strikes,
+      strike: !truthful,
+    });
+    gs.thinking = null;
+
+    // Check disqualification
+    if (gs.strikes >= 3) {
+      await sleep(600);
+      gs.status = 'over';
+      gs.winner = 'guesser';
+      gs.concept = { category: concept.category, emoji: concept.emoji, word: concept.word };
+      broadcast('gameover', {
+        ...gs,
+        concept: { category: concept.category, emoji: concept.emoji, word: concept.word },
+        reason: 'disqualified',
+      });
       gameRunning = false;
       return;
     }
@@ -293,7 +350,11 @@ async function runGame(thinkerModel, guesserModel) {
   gs.status = 'over';
   gs.winner = 'thinker';
   gs.concept = { category: concept.category, emoji: concept.emoji, word: concept.word };
-  broadcast('gameover', { ...gs, concept: { category: concept.category, emoji: concept.emoji, word: concept.word } });
+  broadcast('gameover', {
+    ...gs,
+    concept: { category: concept.category, emoji: concept.emoji, word: concept.word },
+    reason: 'turns_exhausted',
+  });
   gameRunning = false;
 }
 
@@ -314,7 +375,7 @@ const fallbackQuestions = [
   'Does it live in water?',
   'Is it a plant?',
   'Is it a type of food?',
-  'Is it an abstract concept?',
+  'Is it a place or location?',
   'Can you hold it in your hand?',
   'Is it made of metal?',
   'Is it a musical instrument?',
@@ -325,27 +386,30 @@ function fallbackAnswer(concept, question) {
   const q = question.toLowerCase();
   const w = concept.word.toLowerCase();
 
-  // Exact guess check
   if (q.includes(w)) return 'CORRECT';
 
   const animalChecks = {
-    'animal': true, 'alive': true, 'mammal': ['elephant','dolphin','giraffe','kangaroo'].includes(w),
-    'fly': ['eagle','butterfly'].includes(w), 'water': ['dolphin','penguin','octopus'].includes(w),
+    'animal': true, 'alive': true,
+    'mammal': ['elephant','dolphin','giraffe'].includes(w),
+    'fly': ['eagle','butterfly'].includes(w),
+    'water': ['dolphin','penguin','octopus'].includes(w),
   };
   const objectChecks = {
-    'object': true, 'man-made': true, 'hold': ['compass','camera','guitar','keyboard'].includes(w),
-    'electronic': ['camera','keyboard','microscope'].includes(w), 'metal': ['anchor','compass','bicycle','guitar'].includes(w),
-    'moving parts': ['bicycle','camera','telescope','microscope','hourglass'].includes(w),
+    'object': true, 'man-made': true,
+    'hold': ['compass','camera','guitar','keyboard'].includes(w),
+    'electronic': ['camera','keyboard','microscope'].includes(w),
+    'metal': ['compass','bicycle','guitar'].includes(w),
+    'moving parts': ['bicycle','camera','telescope','microscope'].includes(w),
   };
   const natureChecks = {
-    'nature': true, 'plant': ['sunflower','mushroom'].includes(w),
-    'natural phenomenon': ['volcano','waterfall','rainbow','aurora','lightning','tornado'].includes(w),
+    'nature': true, 'plant': ['sunflower'].includes(w),
+    'natural phenomenon': ['volcano','waterfall','rainbow','lightning'].includes(w),
   };
   const foodChecks = {
     'food': true, 'edible': true,
   };
-  const abstractChecks = {
-    'abstract': true,
+  const placeChecks = {
+    'place': true, 'location': true,
   };
 
   const cat = concept.category;
@@ -354,7 +418,7 @@ function fallbackAnswer(concept, question) {
   else if (cat === 'Object') checks = objectChecks;
   else if (cat === 'Nature') checks = natureChecks;
   else if (cat === 'Food') checks = { ...foodChecks, ...natureChecks };
-  else if (cat === 'Abstract') checks = abstractChecks;
+  else if (cat === 'Place') checks = placeChecks;
 
   for (const [key, val] of Object.entries(checks)) {
     if (q.includes(key)) {
@@ -363,11 +427,10 @@ function fallbackAnswer(concept, question) {
     }
   }
 
-  // size
   if (q.includes('larger') || q.includes('bigger') || q.includes('breadbox')) {
-    return ['elephant','giraffe','volcano','waterfall','lighthouse','glacier','tornado','aurora','rainbow','democracy','infinity','gravity','time'].includes(w) ? 'YES' : 'NO';
+    return ['elephant','giraffe','volcano','waterfall','glacier','mountain','desert','forest','airport','school','library'].includes(w) ? 'YES' : 'NO';
   }
-  if (q.includes('daily')) return ['camera','keyboard','bicycle','time','music','memory','chocolate','cheese','pizza'].includes(w) ? 'YES' : 'NO';
+  if (q.includes('daily')) return ['camera','keyboard','bicycle','chocolate','cheese','pizza','school'].includes(w) ? 'YES' : 'NO';
 
   return 'NO';
 }
@@ -383,6 +446,14 @@ app.post('/reset', (req, res) => {
   const { thinkerModel, guesserModel } = req.body || {};
   res.json({ ok: true });
   runGame(thinkerModel, guesserModel);
+});
+
+app.post('/stop', (req, res) => {
+  gameRunning = false;
+  gs = freshState();
+  gs.status = 'idle';
+  broadcast('reset', gs);
+  res.json({ ok: true });
 });
 
 app.listen(PORT, () => console.log(`20 Questions → http://localhost:${PORT}`));
