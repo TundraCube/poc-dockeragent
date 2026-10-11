@@ -96,6 +96,23 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
 .agent-card .strikes-display.warn{color:var(--thinker)}
 .agent-card .strikes-display.danger{color:var(--thinker);animation:dotPulse .6s ease-in-out infinite}
 
+/* ── Spectator panel (shows secret word during gameplay) ── */
+.spectator-panel{
+  display:none;
+  text-align:center;
+  padding:8px 20px;
+  margin-bottom:12px;
+  background:rgba(22,27,34,0.9);
+  border:1px solid #d2991d;
+  border-radius:8px;
+  font-size:.85rem;
+  backdrop-filter: blur(4px);
+}
+.spectator-panel.visible{display:block}
+.spectator-panel .label{color:var(--dim);font-weight:600;margin-right:4px;text-transform:uppercase}
+.spectator-panel .secret-word{font-weight:700;color:#d2991d}
+.spectator-panel .secret-emoji{font-size:1.15rem;margin-left:6px}
+
 @keyframes dotPulse{
   0%,100%{opacity:0.3;transform:scale(0.8)}
   50%{opacity:1;transform:scale(1.3)}
@@ -496,6 +513,13 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
     </div>
   </div>
 
+  <!-- SPECTATOR PANEL (visible during gameplay) -->
+  <div class="spectator-panel" id="spectator-panel">
+    <span class="label">SECRET:</span>
+    <span class="secret-word" id="secret-word"></span>
+    <span class="secret-emoji" id="secret-emoji"></span>
+  </div>
+
   <!-- A2A FLOW INDICATOR -->
   <div class="a2a-flow" id="a2a-flow">
     <div class="a2a-flow-step" id="a2a-step">Click Start to begin</div>
@@ -524,10 +548,10 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
     <div class="game-board" id="game-board">
       <div class="board-header" id="board-header">
         <span class="turn-disp" id="turn-disp">Turn: --</span>
-        <span class="strike-disp" id="strike-disp">🧠 0/3 strikes</span>
+        <span class="strike-disp" id="strike-disp">⚖️ Referee caught 0/3 lies</span>
       </div>
       <div class="board-empty" id="board-empty">
-        Select models and click Start<br>to watch two AI agents play 20 Questions.
+        Select models and click Start<br>to watch two AI agents play 20 Questions.<br><small style="color:#8b949e">The Referee validates every answer. 3 lies = Thinker disqualified.</small>
       </div>
     </div>
 
@@ -615,6 +639,9 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
 
   let overlayTimer = null;
   let currentStrikes = 0;
+  const spectatorPanel = document.getElementById('spectator-panel');
+  const secretWord = document.getElementById('secret-word');
+  const secretEmoji = document.getElementById('secret-emoji');
 
   function escapeHtml(s) {
     const d = document.createElement('div');
@@ -661,14 +688,14 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
 
   function updateStrikes(strikes) {
     currentStrikes = strikes || 0;
-    strikeDisp.textContent = '🧠 ' + currentStrikes + '/3 strikes';
+    strikeDisp.textContent = '⚖️ Referee caught ' + currentStrikes + '/3 lies';
     if (currentStrikes > 0) {
       strikeDisp.classList.add('warn');
     } else {
       strikeDisp.classList.remove('warn');
     }
-    thinkerStrikes.textContent = currentStrikes > 0 ? ('⚠️ ' + currentStrikes + '/3 strikes') : '';
-    thinkerStrikesDisplay.textContent = '🧠 Strikes: ' + currentStrikes + '/3';
+    thinkerStrikes.textContent = currentStrikes > 0 ? ('⚠️ Thinker lied: ' + currentStrikes + '/3') : '';
+    thinkerStrikesDisplay.textContent = '⚠️ Thinker lied: ' + currentStrikes + '/3';
 
     thinkerStrikesDisplay.className = 'strikes-display';
     if (currentStrikes >= 2) {
@@ -759,8 +786,11 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
     }
 
     overlay.classList.add('show');
-    if (!word) {
+   if (!word) {
       overlayTimer = setTimeout(function(){ overlay.classList.remove('show'); }, 2500);
+    } else {
+      // Auto-dismiss after 3s so Play Again button underneath is clickable
+      overlayTimer = setTimeout(function(){ overlay.classList.remove('show'); }, 3000);
     }
   }
 
@@ -807,12 +837,13 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
     const empty = document.createElement('div');
     empty.className = 'board-empty';
     empty.id = 'board-empty';
-    empty.textContent = 'Select models and click Start to watch two AI agents play 20 Questions.';
+    empty.innerHTML = 'Select models and click Start<br>to watch two AI agents play 20 Questions.<br><small style=\"color:#8b949e\">The Referee validates every answer. 3 lies = Thinker disqualified.</small>';
     gameBoard.appendChild(empty);
     turnDisp.textContent = 'Turn: --';
     updateStrikes(0);
     gameover.classList.remove('show');
     hideOverlay();
+    spectatorPanel.classList.remove('visible');
     clearRobotBobbing();
     btnStart.classList.remove('hidden');
     btnStop.classList.add('hidden');
@@ -829,7 +860,12 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
     const d = JSON.parse(e.data);
     if (d.status === 'idle') { resetUI(); return; }
     if (d.concept?.category && !d.winner) {
-      showOverlay(d.concept.category, d.concept.emoji);
+      showOverlay(d.concept.category, d.concept.emoji, d.concept.word);
+      if (d.concept.word) {
+        secretWord.textContent = d.concept.word;
+        secretEmoji.textContent = ' ' + (d.concept.emoji || '');
+        spectatorPanel.classList.add('visible');
+      }
     }
     updateStrikes(d.strikes || 0);
     thinkerModel.value = d.thinkerModel || 'anthropic/claude-haiku-4.5';
@@ -864,8 +900,15 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
 
   es.addEventListener('concept', function(e) {
       const d = JSON.parse(e.data);
-      showOverlay(d.category, d.emoji);
-      addRefereeMsg('The Thinker has chosen a concept from the ' + d.category + ' category. Let the questions begin!');
+            // Show secret in overlay (include word for spectator visibility)
+            showOverlay(d.category, d.emoji, d.word);
+            // Populate persistent spectator panel
+           if (d.word) {
+              secretWord.textContent = d.word;
+             secretEmoji.textContent = ' ' + (d.emoji || '');
+              spectatorPanel.classList.add('visible');
+            }
+            addRefereeMsg('The Thinker has chosen a concept from the ' + d.category + ' category. Let the questions begin!');
       setAgentStatus(thinkerCard, thinkerDot, thinkerStatus, 'ready', false);
     setAgentStatus(refereeCard, refereeDot, refereeStatus, 'orchestrating', false);
     setA2aFlow('Referee <span class="a2a-arrow">→</span> <span class="a2a-agent guesser-a">Guesser</span>: <span class="a2a-text">Your turn</span>');
@@ -892,8 +935,8 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
     setAgentStatus(thinkerCard, thinkerDot, thinkerStatus, 'answered', false);
 
     if (d.strike) {
-      setAgentStatus(refereeCard, refereeDot, refereeStatus, '⚡ strike!', true);
-      setA2aFlow('<span class="a2a-agent referee-a">Referee</span>: <span class="a2a-val no">Contradiction detected ✗</span> <span class="a2a-text">(Strike ' + currentStrikes + '/3)</span>');
+      setAgentStatus(refereeCard, refereeDot, refereeStatus, '⚡ lie detected!', true);
+      setA2aFlow('<span class="a2a-agent referee-a">Referee</span>: <span class="a2a-val no">Contradiction detected ✗</span> <span class="a2a-text">(Lie ' + currentStrikes + '/3)</span>');
     } else {
       setAgentStatus(refereeCard, refereeDot, refereeStatus, 'validated', false);
       setA2aFlow('<span class="a2a-agent referee-a">Referee</span>: <span class="a2a-val yes">Answer validated ✓</span>');
@@ -934,6 +977,7 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
     // ── Actions ──
     window.startGame = function() {
       hideOverlay();
+      spectatorPanel.classList.remove('visible');
       gameBoard.innerHTML = '';
       var empty = document.createElement('div');
       empty.className = 'board-empty';
@@ -973,6 +1017,7 @@ h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
 
     window.resetGame = function() {
       hideOverlay();
+      spectatorPanel.classList.remove('visible');
       gameBoard.innerHTML = '';
       var empty = document.createElement('div');
       empty.className = 'board-empty';

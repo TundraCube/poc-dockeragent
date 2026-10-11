@@ -234,8 +234,8 @@ async function runGame(thinkerModel, guesserModel) {
   await sleep(800);
 
   // Reveal category (not word) via concept popup
-  gs.concept = { category: concept.category, emoji: concept.emoji, word: null };
-  broadcast('concept', { category: concept.category, emoji: concept.emoji });
+  gs.concept = { category: concept.category, emoji: concept.emoji, word: concept.word };
+  broadcast('concept', { category: concept.category, emoji: concept.emoji, word: concept.word });
   await sleep(3000);
 
   gs.thinking = null;
