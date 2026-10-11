@@ -3,305 +3,186 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tic-Tac-Toe - AI vs AI</title>
+<title>Docker Agent — A2A Tic-Tac-Toe</title>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--surface:#161b22;--border:#30363d;
+  --text:#c9d1d9;--dim:#8b949e;
+  --x:#58a6ff;--o:#3fb950;--ref:#d2991d;
+  --glow-x:rgba(88,166,255,0.3);--glow-o:rgba(63,185,80,0.3);--win:rgba(255,215,0,0.45);
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.container{text-align:center;max-width:480px;width:100%;padding:24px}
+h1{font-size:1.4rem;font-weight:600;margin-bottom:2px}
+.sub{font-size:.78rem;color:var(--dim);margin-bottom:20px}
 
-:root {
-  --bg: #0d1117;
-  --surface: #161b22;
-  --border: #30363d;
-  --x-color: #58a6ff;
-  --o-color: #3fb950;
-  --text: #c9d1d9;
-  --dim: #8b949e;
-  --glow-x: rgba(88,166,255,0.3);
-  --glow-o: rgba(63,185,80,0.3);
-  --win-glow: rgba(255,215,0,0.4);
-}
+/* Agent panel */
+.agents{display:flex;gap:10px;margin-bottom:20px;justify-content:center;flex-wrap:wrap}
+.agent-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;min-width:130px;text-align:center;transition:all .2s}
+.agent-card.active{border-color:var(--ref)}
+.agent-card .name{font-weight:600;font-size:.85rem}
+.agent-card .strategy{font-size:.7rem;color:var(--dim);margin-top:2px}
+.agent-card .status{font-size:.75rem;margin-top:4px;height:18px}
+.agent-card .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.agent-card .dot.pulse{animation:pulse .8s ease-in-out infinite}
+.agent-card.x .name{color:var(--x)}.agent-card.x .dot{background:var(--x);box-shadow:0 0 6px var(--glow-x)}
+.agent-card.o .name{color:var(--o)}.agent-card.o .dot{background:var(--o);box-shadow:0 0 6px var(--glow-o)}
+.agent-card.ref{min-width:100px}.agent-card.ref .name{color:var(--ref)}.agent-card.ref .dot{background:var(--ref)}
+@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-}
+/* Board */
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--border);border-radius:10px;padding:6px;max-width:300px;aspect-ratio:1;margin:0 auto 20px}
+.cell{background:var(--surface);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:700;cursor:default;transition:background .15s}
+.cell.x{color:var(--x)}.cell.o{color:var(--o)}
+.cell.last{box-shadow:inset 0 0 0 2px var(--dim)}
+.cell.win{animation:winAnim .6s ease-in-out infinite alternate}
+@keyframes winAnim{from{box-shadow:inset 0 0 8px 2px var(--win)}to{box-shadow:inset 0 0 20px 4px var(--win)}}
 
-.container {
-  text-align: center;
-  max-width: 420px;
-  width: 100%;
-  padding: 24px;
-}
+/* Turn indicator */
+.turn-indicator{font-size:.85rem;margin-bottom:12px;min-height:22px}
+.turn-indicator .hl{font-weight:600}
 
-h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  margin-bottom: 4px;
-}
+.result{font-size:1.05rem;font-weight:600;margin-bottom:14px;min-height:26px}
+.result.x{color:var(--x)}.result.o{color:var(--o)}.result.draw{color:var(--dim)}
 
-.subtitle {
-  font-size: 0.8rem;
-  color: var(--dim);
-  margin-bottom: 28px;
-}
+.btn{display:inline-block;padding:8px 20px;font-size:.82rem;font-weight:500;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;transition:all .15s}
+.btn:hover{background:#1c2129;border-color:#484f58}
+.btn.hidden{display:none}
 
-.status-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 24px;
-  height: 32px;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  padding: 4px 12px;
-  border-radius: 6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-.badge.x { color: var(--x-color); }
-.badge.o { color: var(--o-color); }
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: none;
-}
-.dot.active {
-  display: block;
-  animation: pulse 0.8s ease-in-out infinite;
-}
-.dot.dot-x { background: var(--x-color); box-shadow: 0 0 6px var(--glow-x); }
-.dot.dot-o { background: var(--o-color); box-shadow: 0 0 6px var(--glow-o); }
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.3; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
-}
-
-.board {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  background: var(--border);
-  border-radius: 10px;
-  padding: 6px;
-  width: 100%;
-  aspect-ratio: 1;
-  max-width: 340px;
-  margin: 0 auto 24px;
-}
-
-.cell {
-  background: var(--surface);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.4rem;
-  font-weight: 700;
-  cursor: default;
-  transition: background 0.15s;
-}
-.cell.x-mark { color: var(--x-color); }
-.cell.o-mark { color: var(--o-color); }
-.cell.last-move { box-shadow: inset 0 0 0 2px var(--dim); }
-.cell.win { animation: winPulse 0.6s ease-in-out infinite alternate; }
-
-@keyframes winPulse {
-  from { box-shadow: inset 0 0 8px 2px var(--win-glow); }
-  to   { box-shadow: inset 0 0 18px 4px var(--win-glow); }
-}
-
-.result {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 16px;
-  min-height: 28px;
-}
-.result.hidden { visibility: hidden; }
-.result.x-win { color: var(--x-color); }
-.result.o-win { color: var(--o-color); }
-.result.draw { color: var(--dim); }
-
-.btn {
-  display: inline-block;
-  padding: 8px 20px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.btn:hover { background: #1c2129; border-color: #484f58; }
-.btn.hidden { display: none; }
-
-.move-log {
-  margin-top: 20px;
-  text-align: left;
-  font-size: 0.75rem;
-  color: var(--dim);
-  max-height: 120px;
-  overflow-y: auto;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 12px;
-  background: var(--surface);
-  display: none;
-}
-.move-log.has-moves { display: block; }
-.move-log div { padding: 2px 0; }
-.move-log .x { color: var(--x-color); }
-.move-log .o { color: var(--o-color); }
+/* Move log */
+.log{margin-top:16px;text-align:left;font-size:.72rem;color:var(--dim);max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px 12px;background:var(--surface)}
+.log .entry{padding:2px 0;display:flex;gap:8px}
+.log .entry .player{font-weight:600;min-width:20px}
+.log .entry.x .player{color:var(--x)}
+.log .entry.o .player{color:var(--o)}
+.log .entry .ref .player{color:var(--ref)}
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>Tic-Tac-Toe</h1>
-  <p class="subtitle">AI vs AI &mdash; sit back and watch</p>
+  <h1>Docker Agent — A2A Tic-Tac-Toe</h1>
+  <p class="sub">Two AI agents play via docker-agent's A2A protocol</p>
 
-  <div class="status-bar">
-    <div class="badge x">X</div>
-    <div class="dot dot-x" id="dot-x"></div>
-    <div class="dot dot-o" id="dot-o"></div>
-    <div class="badge o">O</div>
+  <div class="agents">
+    <div class="agent-card x" id="card-x">
+      <div class="name">Agent X</div>
+      <div class="strategy">Center-First</div>
+      <div class="status"><span class="dot"></span> <span class="txt">idle</span></div>
+    </div>
+    <div class="agent-card ref" id="card-ref">
+      <div class="name">Referee</div>
+      <div class="strategy">Orchestrator</div>
+      <div class="status"><span class="dot"></span> <span class="txt">idle</span></div>
+    </div>
+    <div class="agent-card o" id="card-o">
+      <div class="name">Agent O</div>
+      <div class="strategy">Block-First</div>
+      <div class="status"><span class="dot"></span> <span class="txt">idle</span></div>
+    </div>
   </div>
 
-  <div class="result hidden" id="result"></div>
+  <div class="turn-indicator" id="turn"></div>
 
   <div class="board" id="board">
-    <div class="cell" data-index="0"></div>
-    <div class="cell" data-index="1"></div>
-    <div class="cell" data-index="2"></div>
-    <div class="cell" data-index="3"></div>
-    <div class="cell" data-index="4"></div>
-    <div class="cell" data-index="5"></div>
-    <div class="cell" data-index="6"></div>
-    <div class="cell" data-index="7"></div>
-    <div class="cell" data-index="8"></div>
+    <div class="cell" data-i="0"></div><div class="cell" data-i="1"></div><div class="cell" data-i="2"></div>
+    <div class="cell" data-i="3"></div><div class="cell" data-i="4"></div><div class="cell" data-i="5"></div>
+    <div class="cell" data-i="6"></div><div class="cell" data-i="7"></div><div class="cell" data-i="8"></div>
   </div>
 
+  <div class="result" id="result"></div>
   <button class="btn hidden" id="btn-reset" onclick="resetGame()">Play Again</button>
 
-  <div class="move-log" id="move-log"></div>
+  <div class="log" id="log"></div>
 </div>
 
 <script>
-(function() {
-  var cells = document.querySelectorAll('.cell');
-  var resultEl = document.getElementById('result');
-  var btnReset = document.getElementById('btn-reset');
-  var moveLog = document.getElementById('move-log');
-  var dotX = document.getElementById('dot-x');
-  var dotO = document.getElementById('dot-o');
+(function(){
+  const cells = document.querySelectorAll('.cell');
+  const resultEl = document.getElementById('result');
+  const btnReset = document.getElementById('btn-reset');
+  const turnEl = document.getElementById('turn');
+  const logEl = document.getElementById('log');
+  const cardX = document.getElementById('card-x');
+  const cardO = document.getElementById('card-o');
+  const cardRef = document.getElementById('card-ref');
+
+  function updateAgentCards(thinking) {
+    [cardX, cardO, cardRef].forEach(c => { c.classList.remove('active'); c.querySelector('.dot').classList.remove('pulse'); });
+    cardX.querySelector('.txt').textContent = 'idle';
+    cardO.querySelector('.txt').textContent = 'idle';
+    cardRef.querySelector('.txt').textContent = 'idle';
+
+    if (thinking === 'X') {
+      cardX.classList.add('active'); cardX.querySelector('.dot').classList.add('pulse');
+      cardX.querySelector('.txt').textContent = 'thinking...';
+    } else if (thinking === 'O') {
+      cardO.classList.add('active'); cardO.querySelector('.dot').classList.add('pulse');
+      cardO.querySelector('.txt').textContent = 'thinking...';
+    } else if (thinking === 'referee') {
+      cardRef.classList.add('active'); cardRef.querySelector('.dot').classList.add('pulse');
+      cardRef.querySelector('.txt').textContent = 'running';
+    }
+  }
 
   function renderBoard(board, lastMove, winLine) {
-    for (var i = 0; i < cells.length; i++) {
-      var c = cells[i];
+    cells.forEach((c, i) => {
       c.textContent = board[i] || '';
       c.className = 'cell';
-      if (board[i] === 'X') c.className += ' x-mark';
-      if (board[i] === 'O') c.className += ' o-mark';
-      if (i === lastMove) c.className += ' last-move';
-      if (winLine && winLine.indexOf(i) !== -1) c.className += ' win';
+      if (board[i] === 'X') c.classList.add('x');
+      if (board[i] === 'O') c.classList.add('o');
+      if (i === lastMove) c.classList.add('last');
+      if (winLine && winLine.includes(i)) c.classList.add('win');
+    });
+  }
+
+  function renderTurn(turn, thinking) {
+    if (thinking) {
+      turnEl.innerHTML = '<span class="hl">' + (thinking === 'referee' ? 'Referee' : 'Agent ' + thinking) + '</span> is thinking...';
+    } else {
+      turnEl.innerHTML = '<span class="hl">Agent ' + turn + '</span>\'s turn';
     }
   }
 
   function renderResult(winner) {
-    if (!winner) {
-      resultEl.className = 'result hidden';
-      return;
-    }
-    if (winner === 'draw') {
-      resultEl.className = 'result draw';
-      resultEl.textContent = 'Draw!';
-    } else {
-      resultEl.className = 'result ' + (winner === 'X' ? 'x-win' : 'o-win');
-      resultEl.textContent = 'Player ' + winner + ' Wins!';
-    }
+    if (!winner) { resultEl.textContent = ''; return; }
+    if (winner === 'draw') { resultEl.className = 'result draw'; resultEl.textContent = 'Draw!'; }
+    else { resultEl.className = 'result ' + winner.toLowerCase(); resultEl.textContent = 'Agent ' + winner + ' Wins!'; }
     btnReset.classList.remove('hidden');
+    updateAgentCards(null);
+    turnEl.textContent = '';
   }
 
-  function renderThinking(th) {
-    dotX.classList.toggle('active', th === 'X');
-    dotO.classList.toggle('active', th === 'O');
+  function renderLog(history) {
+    logEl.innerHTML = history.map(m =>
+      '<div class="entry ' + m.player.toLowerCase() + '"><span class="player">Agent ' + m.player + '</span> → cell ' + m.cell + ' (row ' + (Math.floor(m.cell/3)+1) + ', col ' + ((m.cell%3)+1) + ')</div>'
+    ).join('');
   }
 
-  function updateMoveLog(h) {
-    moveLog.innerHTML = h.map(function(m) {
-      var r = Math.floor(m.cell / 3) + 1;
-      var cl = (m.cell % 3) + 1;
-      return '<div class="' + m.player.toLowerCase() + '">Player ' + m.player + ' moved to (' + r + ',' + cl + ')</div>';
-    }).join('');
-    moveLog.className = 'move-log' + (h.length ? ' has-moves' : '');
+  function handleState(d) {
+    renderBoard(d.board, d.lastMove, d.winLine);
+    updateAgentCards(d.thinking);
+    if (!d.winner) renderTurn(d.turn, d.thinking);
+    if (d.winner) renderResult(d.winner);
+    if (d.moveHistory) renderLog(d.moveHistory);
   }
 
-  window.resetGame = function() {
-    fetch('/reset', { method: 'POST' });
-    resultEl.className = 'result hidden';
-    btnReset.classList.add('hidden');
-    for (var i = 0; i < cells.length; i++) {
-      cells[i].textContent = '';
-      cells[i].className = 'cell';
-    }
-  };
-
-  var es = new EventSource('/events');
-
-  es.addEventListener('sync', function(e) {
-    var d = JSON.parse(e.data);
+  const es = new EventSource('/events');
+  es.addEventListener('sync', e => handleState(JSON.parse(e.data)));
+  es.addEventListener('move', e => handleState(JSON.parse(e.data)));
+  es.addEventListener('thinking', e => handleState(JSON.parse(e.data)));
+  es.addEventListener('gameover', e => handleState(JSON.parse(e.data)));
+  es.addEventListener('reset', e => {
+    const d = JSON.parse(e.data);
     renderBoard(d.board, d.lastMove, d.winLine);
-    renderResult(d.winner);
-    renderThinking(d.thinking);
-    updateMoveLog(d.moveHistory || []);
-  });
-
-  es.addEventListener('move', function(e) {
-    var d = JSON.parse(e.data);
-    renderBoard(d.board, d.lastMove, d.winLine);
-    renderThinking(null);
-    updateMoveLog(d.moveHistory || []);
-  });
-
-  es.addEventListener('thinking', function(e) {
-    var d = JSON.parse(e.data);
-    renderBoard(d.board, d.lastMove, d.winLine);
-    renderThinking(d.thinking);
-    updateMoveLog(d.moveHistory || []);
-  });
-
-  es.addEventListener('gameover', function(e) {
-    var d = JSON.parse(e.data);
-    renderBoard(d.board, d.lastMove, d.winLine);
-    renderResult(d.winner);
-    renderThinking(null);
-    updateMoveLog(d.moveHistory || []);
-  });
-
-  es.addEventListener('reset', function(e) {
-    var d = JSON.parse(e.data);
-    renderBoard(d.board, d.lastMove, d.winLine);
+    updateAgentCards(null);
     renderResult(null);
-    renderThinking(null);
-    updateMoveLog([]);
+    renderLog([]);
     btnReset.classList.add('hidden');
-  });
+    turnEl.textContent = '';
+  }));
+
+  window.resetGame = () => fetch('/reset', { method: 'POST' });
 })();
 </script>
 </body>
