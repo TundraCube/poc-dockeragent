@@ -60,7 +60,7 @@ agents:
         send: true
 
       player-o:
-        model: openrouter/anthropic/claude-3-haiku
+        model: openrouter/anthropic/claude-haiku-4.5
         instruction: |
           You are Player O (○) in tic-tac-toe.
           When you receive the board state, respond with ONLY a single digit (0-8) — nothing else.

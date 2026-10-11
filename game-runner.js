@@ -25,7 +25,7 @@ if (!API_KEY || API_KEY.length < 10) { console.error('Cannot read API key from',
 
 const AGENTS = {
   X: { model: 'openai/gpt-4o-mini', name: 'Agent X', provider: 'OpenAI', color: '#58a6ff' },
-  O: { model: 'anthropic/claude-3-haiku', name: 'Agent O', provider: 'Anthropic', color: '#3fb950' },
+  O: { model: 'anthropic/claude-haiku-4.5', name: 'Agent O', provider: 'Anthropic', color: '#3fb950' },
   referee: { name: 'Referee', provider: 'DeepSeek', color: '#d2991d' }
 };
 
@@ -67,7 +67,7 @@ async function askAgent(player, board, lastMove) {
     });
     const d = await res.json();
     if (d.error) { console.error(`LLM err (${player}):`, d.error.message || d.error); return null; }
-    const v = parseInt(d.choices?.[0]?.message?.content?.trim(), 10);
+    const v = parseInt(d.choices?.[0]?.message?.content?.replace(/["'\n]/g, '').trim(), 10);
     if (isNaN(v) || v < 0 || v > 8 || board[v]) {
       console.log(`${a.name} bad response: "${d.choices?.[0]?.message?.content}"`);
       return null;

@@ -199,7 +199,30 @@ h1{font-size:1.4rem;font-weight:600;margin-bottom:2px}
   });
 
   window.resetGame = () => fetch('/reset', { method: 'POST' });
-  window.startGame = () => fetch('/start', { method: 'POST' });
+  window.startGame = () => {
+    btnStart.textContent = 'Starting...';
+    btnStart.disabled = true;
+    fetch('/start', { method: 'POST' }).then(r => r.json()).then(d => {
+      if (d.ok) {
+        btnStart.classList.add('hidden');
+        btnStart.textContent = '🎮 Start Game';
+        btnStart.disabled = false;
+      }
+    }).catch(() => {
+      btnStart.textContent = '🎮 Start Game';
+      btnStart.disabled = false;
+    });
+  };
+
+  // SSE error handling — try polling as fallback
+  es.onerror = () => {
+    console.warn('SSE disconnected, polling...');
+    setInterval(() => {
+      fetch('/state').then(r => r.json()).then(d => {
+        if (d && d.status) handleState(d);
+      }).catch(() => {});
+    }, 2000);
+  };
 })();
 </script>
 </body>
