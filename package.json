@@ -1,0 +1,13 @@
+{
+  "name": "tictactoe-ai-spectator",
+  "version": "1.0.0",
+  "description": "Two AI agents play tic-tac-toe with a referee agent and real-time spectator UI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

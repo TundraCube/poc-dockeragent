@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tic-Tac-Toe - AI vs AI</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --x-color: #58a6ff;
+  --o-color: #3fb950;
+  --text: #c9d1d9;
+  --dim: #8b949e;
+  --glow-x: rgba(88,166,255,0.3);
+  --glow-o: rgba(63,185,80,0.3);
+  --win-glow: rgba(255,215,0,0.4);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  text-align: center;
+  max-width: 420px;
+  width: 100%;
+  padding: 24px;
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 0.8rem;
+  color: var(--dim);
+  margin-bottom: 28px;
+}
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  height: 32px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.badge.x { color: var(--x-color); }
+.badge.o { color: var(--o-color); }
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: none;
+}
+.dot.active {
+  display: block;
+  animation: pulse 0.8s ease-in-out infinite;
+}
+.dot.dot-x { background: var(--x-color); box-shadow: 0 0 6px var(--glow-x); }
+.dot.dot-o { background: var(--o-color); box-shadow: 0 0 6px var(--glow-o); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: var(--border);
+  border-radius: 10px;
+  padding: 6px;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 340px;
+  margin: 0 auto 24px;
+}
+
+.cell {
+  background: var(--surface);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.4rem;
+  font-weight: 700;
+  cursor: default;
+  transition: background 0.15s;
+}
+.cell.x-mark { color: var(--x-color); }
+.cell.o-mark { color: var(--o-color); }
+.cell.last-move { box-shadow: inset 0 0 0 2px var(--dim); }
+.cell.win { animation: winPulse 0.6s ease-in-out infinite alternate; }
+
+@keyframes winPulse {
+  from { box-shadow: inset 0 0 8px 2px var(--win-glow); }
+  to   { box-shadow: inset 0 0 18px 4px var(--win-glow); }
+}
+
+.result {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  min-height: 28px;
+}
+.result.hidden { visibility: hidden; }
+.result.x-win { color: var(--x-color); }
+.result.o-win { color: var(--o-color); }
+.result.draw { color: var(--dim); }
+
+.btn {
+  display: inline-block;
+  padding: 8px 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn:hover { background: #1c2129; border-color: #484f58; }
+.btn.hidden { display: none; }
+
+.move-log {
+  margin-top: 20px;
+  text-align: left;
+  font-size: 0.75rem;
+  color: var(--dim);
+  max-height: 120px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: var(--surface);
+  display: none;
+}
+.move-log.has-moves { display: block; }
+.move-log div { padding: 2px 0; }
+.move-log .x { color: var(--x-color); }
+.move-log .o { color: var(--o-color); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Tic-Tac-Toe</h1>
+  <p class="subtitle">AI vs AI &mdash; sit back and watch</p>
+
+  <div class="status-bar">
+    <div class="badge x">X</div>
+    <div class="dot dot-x" id="dot-x"></div>
+    <div class="dot dot-o" id="dot-o"></div>
+    <div class="badge o">O</div>
+  </div>
+
+  <div class="result hidden" id="result"></div>
+
+  <div class="board" id="board">
+    <div class="cell" data-index="0"></div>
+    <div class="cell" data-index="1"></div>
+    <div class="cell" data-index="2"></div>
+    <div class="cell" data-index="3"></div>
+    <div class="cell" data-index="4"></div>
+    <div class="cell" data-index="5"></div>
+    <div class="cell" data-index="6"></div>
+    <div class="cell" data-index="7"></div>
+    <div class="cell" data-index="8"></div>
+  </div>
+
+  <button class="btn hidden" id="btn-reset" onclick="resetGame()">Play Again</button>
+
+  <div class="move-log" id="move-log"></div>
+</div>
+
+<script>
+(function() {
+  var cells = document.querySelectorAll('.cell');
+  var resultEl = document.getElementById('result');
+  var btnReset = document.getElementById('btn-reset');
+  var moveLog = document.getElementById('move-log');
+  var dotX = document.getElementById('dot-x');
+  var dotO = document.getElementById('dot-o');
+
+  function renderBoard(board, lastMove, winLine) {
+    for (var i = 0; i < cells.length; i++) {
+      var c = cells[i];
+      c.textContent = board[i] || '';
+      c.className = 'cell';
+      if (board[i] === 'X') c.className += ' x-mark';
+      if (board[i] === 'O') c.className += ' o-mark';
+      if (i === lastMove) c.className += ' last-move';
+      if (winLine && winLine.indexOf(i) !== -1) c.className += ' win';
+    }
+  }
+
+  function renderResult(winner) {
+    if (!winner) {
+      resultEl.className = 'result hidden';
+      return;
+    }
+    if (winner === 'draw') {
+      resultEl.className = 'result draw';
+      resultEl.textContent = 'Draw!';
+    } else {
+      resultEl.className = 'result ' + (winner === 'X' ? 'x-win' : 'o-win');
+      resultEl.textContent = 'Player ' + winner + ' Wins!';
+    }
+    btnReset.classList.remove('hidden');
+  }
+
+  function renderThinking(th) {
+    dotX.classList.toggle('active', th === 'X');
+    dotO.classList.toggle('active', th === 'O');
+  }
+
+  function updateMoveLog(h) {
+    moveLog.innerHTML = h.map(function(m) {
+      var r = Math.floor(m.cell / 3) + 1;
+      var cl = (m.cell % 3) + 1;
+      return '<div class="' + m.player.toLowerCase() + '">Player ' + m.player + ' moved to (' + r + ',' + cl + ')</div>';
+    }).join('');
+    moveLog.className = 'move-log' + (h.length ? ' has-moves' : '');
+  }
+
+  window.resetGame = function() {
+    fetch('/reset', { method: 'POST' });
+    resultEl.className = 'result hidden';
+    btnReset.classList.add('hidden');
+    for (var i = 0; i < cells.length; i++) {
+      cells[i].textContent = '';
+      cells[i].className = 'cell';
+    }
+  };
+
+  var es = new EventSource('/events');
+
+  es.addEventListener('sync', function(e) {
+    var d = JSON.parse(e.data);
+    renderBoard(d.board, d.lastMove, d.winLine);
+    renderResult(d.winner);
+    renderThinking(d.thinking);
+    updateMoveLog(d.moveHistory || []);
+  });
+
+  es.addEventListener('move', function(e) {
+    var d = JSON.parse(e.data);
+    renderBoard(d.board, d.lastMove, d.winLine);
+    renderThinking(null);
+    updateMoveLog(d.moveHistory || []);
+  });
+
+  es.addEventListener('thinking', function(e) {
+    var d = JSON.parse(e.data);
+    renderBoard(d.board, d.lastMove, d.winLine);
+    renderThinking(d.thinking);
+    updateMoveLog(d.moveHistory || []);
+  });
+
+  es.addEventListener('gameover', function(e) {
+    var d = JSON.parse(e.data);
+    renderBoard(d.board, d.lastMove, d.winLine);
+    renderResult(d.winner);
+    renderThinking(null);
+    updateMoveLog(d.moveHistory || []);
+  });
+
+  es.addEventListener('reset', function(e) {
+    var d = JSON.parse(e.data);
+    renderBoard(d.board, d.lastMove, d.winLine);
+    renderResult(null);
+    renderThinking(null);
+    updateMoveLog([]);
+    btnReset.classList.add('hidden');
+  });
+})();
+</script>
+</body>
+</html>

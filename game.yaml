@@ -1,0 +1,27 @@
+# Docker Agent YAML — reference definition for the three-agent setup
+# Actual game logic runs via game-runner.js (POC mode: no docker-agent required)
+#
+# Agents communicate via A2A (Agent-to-Agent) protocol.
+
+agents:
+  player-x:
+    image: node:20-alpine
+    command: ["node", "/app/agent-x.js"]
+    description: "Player X agent — picks optimal moves with center-first heuristic"
+    strategy: center-first  # center → corners → edges
+    symbol: X
+
+  player-o:
+    image: node:20-alpine
+    command: ["node", "/app/agent-o.js"]
+    description: "Player O agent — picks optimal moves with block-then-center heuristic"
+    strategy: block-first   # block X win → center → corners → edges
+    symbol: O
+
+  referee:
+    image: node:20-alpine
+    command: ["node", "/app/referee.js"]
+    description: "Referee agent — orchestrates turns, validates moves, declares winner"
+    ports: ["3200:3200"]
+    volumes:
+      - ./state:/state
