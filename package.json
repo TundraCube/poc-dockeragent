@@ -1,7 +1,7 @@
 {
-  "name": "tictactoe-ai-spectator",
+  "name": "20-questions-ai-spectator",
   "version": "1.0.0",
-  "description": "Two AI agents play tic-tac-toe with a referee agent and real-time spectator UI",
+  "description": "Two LLM agents play 20 Questions with a referee and live dialogue UI",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
