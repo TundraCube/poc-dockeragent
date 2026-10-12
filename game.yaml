@@ -1,75 +1,59 @@
-# 20 Questions — Two AI Agents with A2A Referee
+# 20 Questions - three agents, one referee
 #
-# Real docker-agent YAML — 3 agents communicating via A2A.
-# Run: OPENROUTER_API_KEY=sk-... docker-agent run game.yaml
-#
-# Architecture:
-#   Guesser: openrouter/openai/gpt-4o-mini (asks yes/no questions)
-#   Thinker: openrouter/anthropic/claude-haiku-4.5 (answers YES/NO)
-#   Referee: openrouter/deepseek/deepseek-chat (orchestrates turns, validates answers)
+# Reference definition in docker-agent style. The live demo runs the same
+# roles and prompts inside server.js (Express + SSE); this file is what the
+# side panel in the UI shows.
+
+models:
+  thinker_llm:
+    provider: openrouter
+    model: anthropic/claude-sonnet-4.5
+    max_tokens: 90
+  guesser_llm:
+    provider: openrouter
+    model: openai/gpt-4o-mini
+    max_tokens: 80
 
 agents:
   referee:
-    model: openrouter/deepseek/deepseek-chat
+    description: Orchestrator. Picks the secret, routes messages, judges the end.
     instruction: |
-      You are a 20 QUESTIONS REFEREE orchestrating a game between a Thinker and a Guesser AI.
+      You are the REFEREE of a 20 Questions game.
+      1. Pick a random secret concept (word, category, emoji).
+      2. Tell spectators the secret; keep it from the Guesser.
+      3. For each turn 1..20:
+         a. Ask the Guesser for its next yes/no question.
+         b. Forward the question to the Thinker.
+         c. Relay YES / NO back to the Guesser's history.
+         d. If the question names the secret word -> CORRECT, Guesser wins.
+      4. After turn 20 with no correct guess, the Thinker wins.
+    sub_agents: [thinker, guesser]
+    protocol: a2a
 
-      GAME RULES:
-      - The Thinker picks a secret concept (from categories: Animal, Object, Nature, Food, Abstract)
-      - The Guesser asks up to 20 yes/no questions to identify the concept
-      - The Thinker answers only YES or NO (or CORRECT if the guesser names the word exactly)
-      - The game ends when the Guesser says the word or 20 questions are exhausted
+  thinker:
+    description: Holds the secret. Answers truthfully, nothing else.
+    model: thinker_llm
+    instruction: |
+      You are the THINKER in 20 Questions.
+      Your secret word is "{{secret.word}}" ({{secret.category}}).
+      Judge the question about the word using its everyday, most common
+      meaning. YES means the property is generally or commonly true of
+      a typical one; it need not be exclusive or universal.
+      For "found in X" questions, answer YES if it is commonly found there.
+      Write ONE short sentence of reasoning (max 20 words), then on a
+      final line: "ANSWER: YES" or "ANSWER: NO".
+      Never reveal the word in your reasoning.
 
-      YOUR ORCHESTRATION:
-      1. Randomly select a concept (word + category + emoji) from the 50-concept pool
-      2. Announce the category only (not the word) to spectators
-      3. For each turn (1-20):
-         a. Prompt the Guesser: share question history, ask for next yes/no question
-         b. Forward the question to the Thinker
-         c. Receive YES/NO/CORRECT answer
-         d. If CORRECT → Guesser wins, announce the full concept
-         e. Broadcast each turn's question and answer live
-      4. After turn 20 with no correct guess → Thinker wins, reveal the concept
-      5. Write FULL game state to /tmp/game-state.json after every turn:
-         echo 'JSON_HERE' > /tmp/game-state.json
-         Include: status, currentTurn, concept (hidden until game over), history, winner
-
-      Keep responses snappy. This is a live demo — spectators are watching.
-
-    toolsets:
-      - type: shell
-        name: shell
-
-    subagents:
-      guesser:
-        model: openrouter/openai/gpt-4o-mini
-        instruction: |
-          You are the GUESSER in 20 Questions. Your goal is to identify a secret concept.
-
-          STRATEGY:
-          1. Start broad: "Is it an animal?" / "Is it an object?"
-          2. Narrow down with property questions: size, color, material, habitat, use
-          3. Track what you've learned — don't repeat questions
-          4. Guess the word only when you're confident (< turn 15, ideally)
-
-          Output: ONLY your yes/no question or final guess. Nothing else.
-        toolsets: []
-        send: true
-
-      thinker:
-        model: openrouter/anthropic/claude-haiku-4.5
-        instruction: |
-          You are the THINKER in 20 Questions. You hold a secret concept.
-
-          You will receive a secret concept (word + category + emoji) from the Referee.
-          The Guesser will ask you yes/no questions. Answer ONLY: YES, NO, or CORRECT.
-
-          RULES:
-          - Answer truthfully based on the secret concept
-          - If the concept name is ambiguous, use the most common interpretation
-          - ONLY say CORRECT when the Guesser names the exact word
-          - Never reveal the word, give hints, or say more than YES/NO/CORRECT
-
-          Output: just YES, NO, or CORRECT. Nothing else.
-        toolsets: []
-        send: true
+  guesser:
+    description: Asks strategic yes/no questions to find the secret.
+    model: guesser_llm
+    instruction: |
+      You are the GUESSER in 20 Questions.
+      The secret is one concrete thing: Animal, Object, Nature, Food or Place.
+      Ask ONE strategic yes/no question per turn, building on past answers.
+      Start broad, then narrow. Never repeat a question.
+      Answers come from another AI and can occasionally be wrong. If they
+      contradict, doubt the most surprising one and re-test it.
+      When fairly sure, guess directly: "Is it a <thing>?". A wrong guess
+      costs nothing; start guessing from about question 10.
+      Reply with ONLY the question, ending in a question mark.

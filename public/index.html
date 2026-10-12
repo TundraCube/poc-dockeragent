@@ -2,1051 +2,500 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>20 Questions — AI Agents at Play</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>20 Questions — Agent Arena</title>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0d1117;--surface:#161b22;--border:#30363d;
-  --text:#c9d1d9;--dim:#8b949e;
-  --thinker:#f85149;--thinker-bg:rgba(248,81,73,0.12);--thinker-glow:rgba(248,81,73,0.3);
-  --ref:#d2991d;--ref-bg:rgba(210,153,29,0.1);--ref-glow:rgba(210,153,29,0.3);
-  --guesser:#58a6ff;--guesser-bg:rgba(88,166,255,0.12);--guesser-glow:rgba(88,166,255,0.3);
+  --bg:#0b0e1a; --panel:#141829; --line:#262c47; --text:#e8ebff; --dim:#8a91b5;
+  --think:#ff5d6c; --guess:#4da3ff; --ref:#ffc94d; --yes:#3ddc97; --no:#ff5d6c;
 }
-body{
-  background:var(--bg);color:var(--text);
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
-  display:flex;justify-content:center;min-height:100vh;
-}
-.container{max-width:860px;width:100%;padding:20px 16px 40px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:radial-gradient(1200px 600px at 50% -10%,#1b2146 0,var(--bg) 60%) fixed;color:var(--text);
+  font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;overflow-x:hidden}
+button,select{font:inherit}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 16px 40px}
 
-/* Header */
-h1{font-size:1.4rem;font-weight:600;text-align:center;margin-bottom:2px}
-.sub{font-size:.75rem;color:var(--dim);text-align:center;margin-bottom:14px}
+header{text-align:center;margin-bottom:14px}
+h1{font-size:30px;letter-spacing:1px;background:linear-gradient(90deg,var(--think),var(--ref),var(--guess));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--dim);font-size:13px;margin-top:2px}
+.controls{display:flex;gap:10px;justify-content:center;align-items:end;flex-wrap:wrap;margin-top:14px}
+.controls label{display:flex;flex-direction:column;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);gap:4px;text-align:left}
+select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:180px}
+select:disabled{opacity:.5}
+.btn{border:0;border-radius:10px;padding:10px 22px;font-weight:700;cursor:pointer;color:#fff;transition:transform .1s,filter .2s}
+.btn:hover{filter:brightness(1.15)} .btn:active{transform:scale(.96)}
+.btn.go{background:linear-gradient(135deg,var(--yes),#1fb4a0)}
+.btn.stop{background:linear-gradient(135deg,var(--no),#c8325a)}
+.hidden{display:none!important}
 
-/* ── Model selectors ── */
-.models{display:flex;gap:10px;margin-bottom:12px;justify-content:center;flex-wrap:wrap}
-.model-group{display:flex;flex-direction:column;gap:3px;align-items:center}
-.model-group label{font-size:.7rem;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
-.model-group select{
-  background:var(--surface);color:var(--text);border:1px solid var(--border);
-  border-radius:6px;padding:5px 8px;font-size:.76rem;cursor:pointer;
-  outline:none;min-width:190px;
-}
-.model-group select:focus{border-color:var(--ref)}
+.secret{margin:16px auto 10px;max-width:520px;text-align:center;padding:10px 16px;border:1px dashed var(--ref);border-radius:14px;
+  background:rgba(255,201,77,.06);transition:opacity .3s}
+.secret small{color:var(--dim);text-transform:uppercase;letter-spacing:2px;font-size:10px;display:block}
+.secret b{font-size:24px;color:var(--ref)}
+.secret.empty{opacity:.35}
 
-/* ── Buttons ── */
-.buttons{display:flex;gap:8px;margin-bottom:12px;justify-content:center}
-.btn{
-  padding:7px 18px;font-size:.8rem;font-weight:500;
-  border:1px solid var(--border);border-radius:6px;
-  background:var(--surface);color:var(--text);cursor:pointer;transition:all .15s;
-}
-.btn:hover{background:#1c2129;border-color:#484f58}
-.btn.hidden{display:none}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.btn-stop{border-color:var(--thinker);color:var(--thinker)}
-.btn-stop:hover{background:rgba(248,81,73,0.15)}
+.pips{display:flex;gap:5px;justify-content:center;margin:8px 0 14px;flex-wrap:wrap}
+.pip{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:11px;color:var(--dim);transition:all .3s}
+.pip.now{border-color:var(--ref);color:var(--ref);box-shadow:0 0 10px var(--ref);animation:pulse 1.2s infinite}
+.pip.yes{background:var(--yes);border-color:var(--yes);color:#06251a}
+.pip.no{background:var(--no);border-color:var(--no);color:#2b0610}
+.pip.win{background:var(--ref);border-color:var(--ref);color:#2b2006}
 
-/* ── Agent Status Cards ── */
-.agent-cards{
-  display:flex;gap:10px;margin-bottom:12px;justify-content:center;flex-wrap:wrap;
-}
-.agent-card{
-  flex:1;min-width:170px;max-width:240px;
-  background:var(--surface);border:1px solid var(--border);border-radius:10px;
-  padding:10px 12px;display:flex;align-items:center;gap:10px;
-  transition:border-color .3s,box-shadow .3s;
-}
-.agent-card.thinker-card{border-left:3px solid var(--thinker)}
-.agent-card.referee-card{border-left:3px solid var(--ref)}
-.agent-card.guesser-card{border-left:3px solid var(--guesser)}
-.agent-card.active{
-  box-shadow:0 0 12px var(--guesser-glow);
-  border-color:var(--guesser);
-}
-.agent-card.active.thinker-card{box-shadow:0 0 12px var(--thinker-glow);border-color:var(--thinker)}
-.agent-card.active.referee-card{box-shadow:0 0 12px var(--ref-glow);border-color:var(--ref)}
+.arena{display:grid;grid-template-columns:170px 1fr 170px;gap:12px;align-items:start}
+.side{position:sticky;top:12px;text-align:center}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:30px 8px 12px;transition:all .3s;overflow:hidden}
+.side.active .card{box-shadow:0 0 24px -2px var(--c);border-color:var(--c)}
+.side.thinker{--c:var(--think)} .side.guesser{--c:var(--guess)}
+.role{font-weight:800;letter-spacing:2px;font-size:12px;color:var(--c);margin-top:6px}
+.model{font-size:11px;color:var(--dim);margin-top:2px;min-height:15px}
+.status{font-size:12px;margin-top:6px;color:var(--dim);min-height:17px}
+.side.active .status{color:var(--c)}
 
-.agent-avatar{
-  width:36px;height:36px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:1.1rem;flex-shrink:0;
-}
-.agent-card.thinker-card .agent-avatar{background:rgba(248,81,73,0.15)}
-.agent-card.referee-card .agent-avatar{background:rgba(210,153,29,0.15)}
-.agent-card.guesser-card .agent-avatar{background:rgba(88,166,255,0.15)}
+.bot{position:relative;width:110px;height:130px;margin:0 auto;animation:bob 3s ease-in-out infinite}
+.bot .ant{position:absolute;top:0;left:50%;width:4px;height:16px;background:#9aa;transform:translateX(-50%)}
+.bot .ant::after{content:"";position:absolute;top:-8px;left:-5px;width:14px;height:14px;border-radius:50%;background:var(--c);box-shadow:0 0 12px var(--c);animation:blink 2s infinite}
+.bot .head{position:absolute;top:16px;left:50%;transform:translateX(-50%);width:92px;height:70px;background:linear-gradient(160deg,#3a4066,#242846);
+  border:3px solid var(--c);border-radius:14px;overflow:hidden}
+.guesser .head{border-radius:50% 50% 40% 40%}
+.eyes{position:absolute;top:18px;left:0;right:0;display:flex;justify-content:center;gap:18px}
+.eye{width:16px;height:16px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c);animation:eyeblink 4s infinite;position:relative}
+.guesser .eye:first-child{width:22px;height:22px;margin-top:-3px}
+.mouth{position:absolute;bottom:10px;left:50%;width:30px;height:6px;margin-left:-15px;border-radius:6px;background:var(--c);transition:all .15s}
+.talking .mouth{animation:talk .25s infinite alternate}
+.bot .body{position:absolute;top:90px;left:50%;transform:translateX(-50%);width:70px;height:40px;background:linear-gradient(160deg,#343a5e,#1e2240);border:3px solid var(--c);border-radius:10px 10px 18px 18px}
+.bot .body::after{content:"";position:absolute;left:50%;top:9px;width:16px;height:16px;margin-left:-8px;font-size:15px;line-height:16px}
+.thinker .body::after{content:"🧠"} .guesser .body::after{content:"🔍"}
+.dots{position:absolute;top:-6px;right:-4px;font-size:18px;opacity:0}
+.thinking .dots{opacity:1;animation:bob .8s infinite}
+.thinking .eye{animation:scan 1s infinite alternate}
+.nod{animation:nod .5s 2!important} .shake{animation:shake .5s 2!important}
+.win .bot{animation:jump .6s infinite} .lose .bot{filter:grayscale(.7);transform:rotate(-6deg);animation:none}
 
-.agent-info{flex:1;min-width:0}
-.agent-name{font-size:.78rem;font-weight:600;margin-bottom:1px}
-.agent-card.thinker-card .agent-name{color:var(--thinker)}
-.agent-card.referee-card .agent-name{color:var(--ref)}
-.agent-card.guesser-card .agent-name{color:var(--guesser)}
-.agent-model{font-size:.65rem;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.agent-status-row{display:flex;align-items:center;gap:5px;margin-top:3px}
-.agent-status-dot{
-  width:6px;height:6px;border-radius:50%;background:var(--dim);
-  transition:background .3s;
-}
-.agent-status-dot.pulse{
-  animation:dotPulse .8s ease-in-out infinite;
-}
-.agent-status-text{font-size:.65rem;color:var(--dim)}
-.agent-card .strikes-display{font-size:.6rem;color:var(--dim);font-weight:600;margin-top:2px}
-.agent-card .strikes-display.warn{color:var(--thinker)}
-.agent-card .strikes-display.danger{color:var(--thinker);animation:dotPulse .6s ease-in-out infinite}
+.chat{background:rgba(20,24,41,.7);border:1px solid var(--line);border-radius:18px;min-height:460px;max-height:62vh;overflow-y:auto;padding:16px 12px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+.chat{scrollbar-width:thin;scrollbar-color:#2c335a transparent}
+.chat::-webkit-scrollbar{width:8px}
+.chat::-webkit-scrollbar-track{background:transparent;margin:10px 0}
+.chat::-webkit-scrollbar-thumb{background:#2c335a;border-radius:99px;border:2px solid transparent;background-clip:padding-box}
+.chat::-webkit-scrollbar-thumb:hover{background:#3d4678;background-clip:padding-box;border:2px solid transparent}
+.empty-hint{margin:auto;color:var(--dim);text-align:center}
+.msg{max-width:78%;padding:9px 14px;border-radius:16px;position:relative;animation:pop .35s cubic-bezier(.2,1.6,.4,1);box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.msg small{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;opacity:.8;margin-bottom:2px}
+.msg.q{align-self:flex-end;background:linear-gradient(135deg,#2f7fdc,#4da3ff);border-bottom-right-radius:4px;color:#04142b}
+.msg.a{align-self:flex-start;background:linear-gradient(135deg,#d6414f,#ff7a5d);border-bottom-left-radius:4px;color:#2b0509}
+.msg.a.yes{background:linear-gradient(135deg,#1fa874,#3ddc97);color:#032014}
+.msg.a .ans{font-size:20px;font-weight:900;letter-spacing:2px}
+.msg .why{font-size:12px;opacity:.85;margin-top:4px;font-style:italic;line-height:1.35}
+.msg.a.correct{background:linear-gradient(135deg,#e9a800,#ffe066);color:#2b2006}
+.msg.typing{opacity:.85}
+.typing span{display:inline-block;width:7px;height:7px;margin:0 2px;border-radius:50%;background:currentColor;animation:bounce 1s infinite}
+.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
 
-/* ── Spectator panel (shows secret word during gameplay) ── */
-.spectator-panel{
-  display:none;
-  text-align:center;
-  padding:8px 20px;
-  margin-bottom:12px;
-  background:rgba(22,27,34,0.9);
-  border:1px solid #d2991d;
-  border-radius:8px;
-  font-size:.85rem;
-  backdrop-filter: blur(4px);
-}
-.spectator-panel.visible{display:block}
-.spectator-panel .label{color:var(--dim);font-weight:600;margin-right:4px;text-transform:uppercase}
-.spectator-panel .secret-word{font-weight:700;color:#d2991d}
-.spectator-panel .secret-emoji{font-size:1.15rem;margin-left:6px}
+.flow{display:flex;align-items:center;justify-content:center;margin:0 auto 12px;max-width:640px}
+.node{padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--panel);font-size:12px;white-space:nowrap;transition:all .3s}
+.node.on{color:#000;font-weight:700}
+.node.t.on{background:var(--think);box-shadow:0 0 16px var(--think)}
+.node.r.on{background:var(--ref);box-shadow:0 0 16px var(--ref)}
+.node.g.on{background:var(--guess);box-shadow:0 0 16px var(--guess)}
+.wire{flex:1;height:2px;background:var(--line);position:relative;min-width:30px;overflow:hidden}
+.wire i{position:absolute;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--ref);box-shadow:0 0 10px var(--ref);opacity:0}
+.wire.l i{animation:packetL .9s linear infinite;opacity:1}
+.wire.r i{animation:packetR .9s linear infinite;opacity:1}
 
-@keyframes dotPulse{
-  0%,100%{opacity:0.3;transform:scale(0.8)}
-  50%{opacity:1;transform:scale(1.3)}
-}
+.overlay{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:50}
+.pop{background:rgba(15,18,35,.95);border:2px solid var(--ref);border-radius:24px;padding:26px 44px;text-align:center;box-shadow:0 0 60px rgba(255,201,77,.35);animation:reveal 3s ease forwards}
+.pop .e{font-size:76px}.pop .t{color:var(--dim);letter-spacing:3px;font-size:12px;text-transform:uppercase}.pop .w{font-size:34px;font-weight:900;color:var(--ref)}
+.banner{margin:14px auto 0;max-width:560px;text-align:center;padding:16px;border-radius:16px;border:2px solid var(--c);background:var(--panel);animation:pop .5s}
+.banner h2{font-size:24px;color:var(--c)}
+.banner p{color:var(--dim);margin:4px 0 12px}
+.confetti{position:fixed;top:-20px;width:10px;height:14px;pointer-events:none;z-index:60;animation:fall linear forwards}
 
-/* ── Comic strip layout ── */
-.comic-strip{
-  display:flex;align-items:flex-start;gap:0;
-  border:1px solid var(--border);border-radius:12px;
-  background:var(--surface);margin-bottom:12px;
-  min-height:380px;position:relative;overflow:hidden;
-}
+@keyframes bob{50%{transform:translateY(-5px)}}
+@keyframes blink{50%{opacity:.3}}
+@keyframes eyeblink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+@keyframes scan{from{transform:translateX(-3px)}to{transform:translateX(3px)}}
+@keyframes talk{from{height:4px}to{height:14px;border-radius:10px}}
+@keyframes nod{50%{transform:translateY(8px)}}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@keyframes jump{50%{transform:translateY(-14px)}}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+@keyframes bounce{50%{transform:translateY(-5px)}}
+@keyframes pulse{50%{box-shadow:0 0 2px var(--ref)}}
+@keyframes reveal{0%{transform:scale(.3) rotate(-8deg);opacity:0}12%{transform:scale(1.08);opacity:1}20%{transform:scale(1)}85%{opacity:1}100%{opacity:0;transform:scale(1.1)}}
+@keyframes packetR{from{left:-8px}to{left:100%}}
+@keyframes packetL{from{left:100%}to{left:-8px}}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+@media(max-width:760px){.arena{grid-template-columns:1fr}.side{position:static}.chat{max-height:50vh}}
 
-/* Robot columns */
-.robot-col{
-  width:130px;min-width:130px;display:flex;flex-direction:column;align-items:center;
-  padding:16px 8px 12px;position:sticky;top:0;overflow:visible;
-}
-.robot-col.thinker-side{border-right:1px dashed var(--border)}
-.robot-col.guesser-side{border-left:1px dashed var(--border)}
-
-/* ── CSS Robot Characters ── */
-.robot-char{
-  width:100px;height:100px;position:relative;margin:10px auto 8px;
-  transition:transform .3s;
-}
-/* Shadow beneath */
-.robot-char::after{
-  content:'';position:absolute;bottom:-12px;left:15px;right:15px;height:8px;
-  background:radial-gradient(ellipse,rgba(0,0,0,0.4) 0%,transparent 70%);
-  border-radius:50%;
-}
-.robot-char.float{animation:gentleFloat 3s ease-in-out infinite}
-.robot-char.bobbing{animation:bob .5s ease-in-out infinite}
-
-@keyframes gentleFloat{
-  0%,100%{transform:translateY(0)}
-  50%{transform:translateY(-4px)}
-}
-@keyframes bob{
-  0%,100%{transform:translateY(0)}
-  50%{transform:translateY(-9px)}
-}
-
-/* ── GUESSER robot (blue+silver, round) ── */
-.guesser-body{
-  width:74px;height:74px;position:absolute;bottom:6px;left:13px;
-  border-radius:50%;
-  background:linear-gradient(145deg,#1e3a5f 0%,#162d4a 30%,#1a3352 50%,#12253d 100%);
-  border:2px solid var(--guesser);
-  box-shadow:inset 0 8px 20px rgba(88,166,255,0.15),0 4px 12px rgba(0,0,0,0.3);
-}
-/* Guesser face screen */
-.guesser-face{
-  position:absolute;bottom:22px;left:22px;width:56px;height:36px;
-  border-radius:10px;background:#0a1628;
-  border:1.5px solid rgba(88,166,255,0.4);
-  display:flex;align-items:center;justify-content:center;gap:10px;
-}
-/* Guesser eyes */
-.guesser-eye{
-  width:11px;height:11px;border-radius:50%;background:var(--guesser);
-  position:relative;overflow:hidden;
-}
-.guesser-eye::after{
-  content:'';position:absolute;top:2px;left:2px;width:5px;height:5px;
-  border-radius:50%;background:#fff;transition:transform .3s;
-}
-.guesser-eye.looking .guesser-eye::after{transform:translateX(2px)}
-.robot-char.looking-left .guesser-eye::after{transform:translateX(-2px)}
-.robot-char.looking-right .guesser-eye::after{transform:translateX(2px)}
-/* Guesser magnifying glass on belly */
-.guesser-tool{
-  position:absolute;bottom:32px;left:41px;width:18px;height:18px;
-  border-radius:50%;border:2.5px solid var(--guesser);
-  background:transparent;
-}
-.guesser-tool::after{
-  content:'';position:absolute;bottom:-6px;right:-4px;
-  width:2.5px;height:9px;background:var(--guesser);border-radius:1px;
-  transform:rotate(-40deg);
-}
-/* Guesser antenna */
-.guesser-antenna{
-  position:absolute;top:0;left:47px;width:5px;height:18px;
-  background:var(--guesser);border-radius:3px;
-}
-.guesser-antenna::after{
-  content:'?';position:absolute;top:-24px;left:-7px;
-  width:22px;height:22px;border-radius:50%;
-  background:var(--guesser);color:#fff;
-  font-size:14px;font-weight:700;font-family:monospace;
-  display:flex;align-items:center;justify-content:center;
-  line-height:22px;text-align:center;
-  animation:qFloat 1.5s ease-in-out infinite;
-}
-@keyframes qFloat{
-  0%,100%{transform:translateY(0);opacity:0.8}
-  50%{transform:translateY(-5px);opacity:1}
-}
-/* Guesser legs */
-.guesser-leg{
-  position:absolute;bottom:-2px;width:10px;height:18px;
-  background:linear-gradient(180deg,rgba(88,166,255,0.4),rgba(88,166,255,0.1));
-  border-radius:2px;
-}
-.guesser-leg.left{left:30px}
-.guesser-leg.right{right:32px}
-
-/* ── THINKER robot (red+crimson, squarer) ── */
-.thinker-body{
-  width:70px;height:68px;position:absolute;bottom:6px;left:15px;
-  border-radius:16px;
-  background:linear-gradient(145deg,#3d1a1a 0%,#2d1010 30%,#351515 50%,#220c0c 100%);
-  border:2px solid var(--thinker);
-  box-shadow:inset 0 8px 20px rgba(248,81,73,0.12),0 4px 12px rgba(0,0,0,0.3);
-}
-/* Thinker face */
-.thinker-face{
-  position:absolute;bottom:22px;left:24px;width:52px;height:32px;
-  border-radius:8px;background:#1a0808;
-  border:1.5px solid rgba(248,81,73,0.35);
-  display:flex;align-items:center;justify-content:center;gap:9px;
-}
-/* Thinker eyes (one half-closed) */
-.thinker-eye{
-  width:10px;height:10px;border-radius:50%;background:var(--thinker);
-  position:relative;overflow:hidden;
-}
-.thinker-eye.squint{
-  height:4px;border-radius:2px;margin-top:3px;
-}
-.thinker-eye::after{
-  content:'';position:absolute;top:2px;left:2px;width:4px;height:4px;
-  border-radius:50%;background:#fff;
-}
-.thinker-eye.squint::after{width:3px;height:2px;border-radius:1px}
-/* Brain on chest */
-.thinker-brain{
-  position:absolute;bottom:30px;left:36px;width:28px;height:22px;
-}
-.thinker-brain::before{
-  content:'';position:absolute;top:0;left:4px;width:20px;height:16px;
-  border-radius:50% 50% 50% 50%/60% 60% 40% 40%;
-  border:1.5px solid rgba(248,81,73,0.5);
-  background:transparent;
-}
-.thinker-brain::after{
-  content:'';position:absolute;top:6px;left:9px;width:10px;height:2px;
-  background:rgba(248,81,73,0.4);border-radius:1px;
-}
-/* Lightbulb on top */
-.thinker-bulb{
-  position:absolute;top:0;left:42px;width:16px;height:16px;
-  border-radius:50% 50% 50% 50%/60% 60% 40% 40%;
-  background:var(--thinker);
-  box-shadow:0 0 10px rgba(248,81,73,0.6),0 0 20px rgba(255,100,80,0.3);
-  transition:box-shadow .5s;
-}
-.thinker-bulb.glow{
-  background:#ff6b5b;
-  box-shadow:0 0 18px rgba(255,100,80,0.8),0 0 35px rgba(255,120,90,0.4),0 0 50px rgba(255,150,100,0.2);
-}
-.thinker-bulb::after{
-  content:'';position:absolute;bottom:-10px;left:2px;width:12px;height:8px;
-  background:linear-gradient(180deg,var(--thinker),transparent);
-  border-radius:0 0 3px 3px;
-}
-/* Thinker legs */
-.thinker-leg{
-  position:absolute;bottom:-2px;width:10px;height:18px;
-  background:linear-gradient(180deg,rgba(248,81,73,0.4),rgba(248,81,73,0.1));
-  border-radius:2px;
-}
-.thinker-leg.left{left:32px}
-.thinker-leg.right{right:32px}
-
-/* Robot labels */
-.robot-label{font-size:.7rem;font-weight:600;text-align:center;margin-top:4px}
-.robot-label.guesser{color:var(--guesser)}
-.robot-label.thinker{color:var(--thinker)}
-.robot-strikes{font-size:.65rem;color:var(--thinker);margin-top:2px;min-height:16px;text-align:center}
-
-/* ── A2A Flow Indicator ── */
-.a2a-flow{
-  display:none;flex-direction:column;align-items:center;gap:4px;
-  padding:8px 16px;margin:0 auto 8px;
-  background:rgba(210,153,29,0.08);border:1px solid rgba(210,153,29,0.2);
-  border-radius:8px;max-width:400px;
-}
-.a2a-flow.visible{display:flex}
-.a2a-flow-step{
-  font-size:.7rem;color:var(--text);display:flex;align-items:center;gap:6px;
-  animation:a2aSlide .3s ease-out both;
-}
-.a2a-flow-step .a2a-arrow{color:var(--ref);font-size:.65rem}
-.a2a-flow-step .a2a-agent{font-weight:600}
-.a2a-flow-step .a2a-agent.thinker-a{color:var(--thinker)}
-.a2a-flow-step .a2a-agent.guesser-a{color:var(--guesser)}
-.a2a-flow-step .a2a-agent.referee-a{color:var(--ref)}
-.a2a-flow-step .a2a-text{color:var(--dim)}
-.a2a-flow-step .a2a-val{font-weight:600}
-.a2a-flow-step .a2a-val.yes{color:#3fb950}
-.a2a-flow-step .a2a-val.no{color:var(--thinker)}
-@keyframes a2aSlide{
-  from{opacity:0;transform:translateY(-6px)}
-  to{opacity:1;transform:translateY(0)}
-}
-
-/* ── Game board (center) ── */
-.game-board{
-  flex:1;padding:12px 10px;display:flex;flex-direction:column;align-items:center;
-  justify-content:flex-start;gap:6px;max-height:380px;overflow-y:auto;
-}
-.game-board .board-header{
-  display:flex;align-items:center;gap:16px;margin-bottom:4px;
-  padding:6px 12px;background:rgba(210,153,29,0.08);
-  border-radius:8px;border:1px solid rgba(210,153,29,0.2);
-}
-.board-header .turn-disp{font-size:.8rem;color:var(--text);font-weight:600}
-.board-header .strike-disp{font-size:.75rem;color:var(--dim);font-weight:600}
-.board-header .strike-disp.warn{color:var(--thinker)}
-
-.board-empty{color:var(--dim);text-align:center;padding:60px 10px;font-size:.8rem;line-height:1.5}
-
-/* ── Speech bubbles ── */
-.speech-row{
-  display:flex;width:100%;margin-bottom:10px;
-  animation:slideIn .3s ease-out both;
-}
-.speech-row.guesser-row{justify-content:flex-start}
-.speech-row.thinker-row{justify-content:flex-end}
-.speech-row.referee-row{justify-content:center}
-
-.speech-bubble{
-  max-width:85%;padding:10px 14px;border-radius:14px;
-  font-size:.82rem;line-height:1.4;word-break:break-word;
-  position:relative;
-}
-.speech-bubble .bub-header{
-  font-size:.65rem;font-weight:600;margin-bottom:3px;
-  text-transform:uppercase;letter-spacing:.04em;
-}
-.speech-bubble.guesser-bub{
-  background:var(--guesser-bg);border-bottom-left-radius:4px;margin-left:0;
-}
-.speech-bubble.guesser-bub .bub-header{color:var(--guesser)}
-.speech-bubble.guesser-bub::before{
-  content:'';position:absolute;left:-8px;top:12px;
-  width:0;height:0;
-  border-top:6px solid transparent;border-bottom:6px solid transparent;
-  border-right:8px solid var(--guesser-bg);
-}
-.speech-bubble.thinker-bub{
-  background:var(--thinker-bg);border-bottom-right-radius:4px;margin-right:0;
-}
-.speech-bubble.thinker-bub .bub-header{color:var(--thinker)}
-.speech-bubble.thinker-bub::after{
-  content:'';position:absolute;right:-8px;top:12px;
-  width:0;height:0;
-  border-top:6px solid transparent;border-bottom:6px solid transparent;
-  border-left:8px solid var(--thinker-bg);
-}
-.speech-bubble.referee-bub{
-  background:var(--ref-bg);font-size:.75rem;
-  text-align:center;font-style:italic;max-width:90%;
-}
-.speech-bubble.referee-bub .bub-header{color:var(--ref);text-align:center}
-.speech-bubble.strike-bub{
-  background:rgba(248,81,73,0.18);border:1px solid rgba(248,81,73,0.4);
-  animation:shake .4s ease-out;
-}
-
-@keyframes shake{
-  0%,100%{transform:translateX(0)}
-  20%{transform:translateX(-4px)}40%{transform:translateX(4px)}
-  60%{transform:translateX(-3px)}80%{transform:translateX(3px)}
-}
-@keyframes slideIn{
-  from{opacity:0;transform:translateY(10px)}
-  to{opacity:1;transform:translateY(0)}
-}
-
-/* ── Concept overlay ── */
-.overlay{
-  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);
-  z-index:1000;justify-content:center;align-items:center;
-}
-.overlay.show{display:flex}
-.overlay .card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:14px;width:280px;padding:28px 24px;text-align:center;
-  transform:scale(0.5);transition:transform .4s ease-out;
-  box-shadow:0 8px 32px rgba(0,0,0,0.5);
-}
-.overlay.show .card{transform:scale(1)}
-.overlay .card .big-emoji{font-size:64px;margin-bottom:12px}
-.overlay .card .title{font-size:.85rem;color:var(--dim);margin-bottom:6px}
-.overlay .card .cat-name{font-size:1.15rem;font-weight:600;margin-bottom:4px}
-.overlay .card .hint{font-size:.75rem;color:var(--dim);font-style:italic}
-.overlay .card .reveal-word{font-size:1.4rem;font-weight:700;margin-top:8px}
-
-/* ── Game-over banner ── */
-.gameover{display:none;text-align:center;margin-top:10px}
-.gameover.show{display:block}
-.gameover .winner-banner{
-  padding:14px;border-radius:10px;font-size:1.1rem;font-weight:700;margin-bottom:14px;
-}
-.gameover .winner-banner.guesser{
-  background:linear-gradient(135deg,var(--guesser-bg),rgba(88,166,255,0.25));
-  color:var(--guesser);border:1px solid rgba(88,166,255,0.3);
-}
-.gameover .winner-banner.thinker{
-  background:linear-gradient(135deg,var(--thinker-bg),rgba(248,81,73,0.25));
-  color:var(--thinker);border:1px solid rgba(248,81,73,0.3);
-}
-.gameover .winner-banner.error{
-  background:linear-gradient(135deg,rgba(248,81,73,0.125),rgba(210,153,29,0.125));
-  color:var(--ref);border:1px solid rgba(210,153,29,0.3);
-}
-.gameover .reveal{text-align:center;margin-bottom:16px}
-.gameover .reveal .big-emoji{font-size:72px}
-.gameover .reveal .word{font-size:1.5rem;font-weight:700;margin:4px 0}
-.gameover .reveal .score{font-size:.82rem;color:var(--dim)}
+/* ── How-it-works drawer ── */
+.info-btn{position:fixed;top:14px;right:14px;z-index:40;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:99px;padding:8px 14px;cursor:pointer;font-size:13px;transition:all .2s}
+.info-btn:hover{border-color:var(--ref);color:var(--ref)}
+.backdrop{position:fixed;inset:0;background:rgba(5,7,15,.55);opacity:0;pointer-events:none;transition:opacity .3s;z-index:70}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(500px,94vw);background:#0f1322;border-left:1px solid var(--line);z-index:80;transform:translateX(100%);transition:transform .35s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.5)}
+body.drawer-open .drawer{transform:none}
+body.drawer-open .backdrop{opacity:1;pointer-events:auto}
+.d-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px 6px}
+.d-head h3{font-size:16px}
+.d-x{background:none;border:0;color:var(--dim);font-size:20px;cursor:pointer}.d-x:hover{color:var(--text)}
+.tabs{display:flex;gap:4px;padding:6px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tab{background:none;border:1px solid transparent;border-radius:8px;color:var(--dim);padding:5px 11px;font-size:12px;cursor:pointer}
+.tab:hover{color:var(--text)}
+.tab.on{background:var(--panel);border-color:var(--c,var(--line));color:var(--c,var(--text))}
+.d-body{padding:16px 18px 30px;overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:#2c335a transparent}
+.d-body::-webkit-scrollbar{width:8px}.d-body::-webkit-scrollbar-thumb{background:#2c335a;border-radius:99px}
+.d-intro{color:var(--dim);font-size:13px;margin-bottom:12px;line-height:1.55}
+.d-intro b{color:var(--text)}
+.d-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin:16px 0 6px;display:flex;justify-content:space-between;align-items:center}
+.copy{background:none;border:1px solid var(--line);color:var(--dim);border-radius:6px;font-size:10px;padding:2px 8px;cursor:pointer}.copy:hover{color:var(--text);border-color:var(--dim)}
+pre.yaml{background:#0a0d19;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-x:auto;white-space:pre;color:#c9d1f5;scrollbar-width:thin;scrollbar-color:#2c335a transparent}
+.y-k{color:#7cc4ff}.y-c{color:#5d668f;font-style:italic}.y-s{color:#a5e8b4}.y-v{color:#ffc94d}
+svg.diagram{width:100%;height:auto;display:block;background:#0a0d19;border:1px solid var(--line);border-radius:12px}
+.dn rect{fill:#161b30;stroke:var(--line);stroke-width:1.5;transition:all .3s}
+.dn text{fill:var(--text);font:600 12px system-ui;text-anchor:middle}
+.dn .sm{font:400 10px system-ui;fill:var(--dim)}
+.dn.on rect{stroke:var(--c);filter:drop-shadow(0 0 8px var(--c))}
+.dn.referee{--c:var(--ref)}.dn.thinker{--c:var(--think)}.dn.guesser{--c:var(--guess)}
+.de{fill:none;stroke:#3a4272;stroke-width:1.6;marker-end:url(#ah)}
+.de.on{stroke:var(--ref);stroke-dasharray:6 5;animation:dash .6s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-11}}
+.dl circle{fill:#0a0d19;stroke:#3a4272}.dl text{fill:var(--dim);font:700 10px system-ui;text-anchor:middle}
+.legend{margin:12px 0 0;padding-left:0;list-style:none;font-size:12.5px;color:var(--dim);display:grid;gap:5px}
+.legend b{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;border:1px solid #3a4272;color:var(--text);font-size:10px;margin-right:8px}
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>🎯 20 Questions</h1>
-  <p class="sub">Two AI agents play — the Referee orchestrates their A2A protocol</p>
+<div class="wrap">
+  <header>
+    <h1>🎯 20 QUESTIONS</h1>
+    <div class="sub">Two AI agents play. The Referee routes their messages (A2A). You watch.</div>
+    <div class="controls">
+      <label>Thinker model<select id="tm" autocomplete="off"></select></label>
+      <label>Guesser model<select id="gm" autocomplete="off"></select></label>
+      <button class="btn go" id="start">▶ Start game</button>
+      <button class="btn stop hidden" id="stop">■ Stop</button>
+    </div>
+  </header>
 
-  <div class="models">
-    <div class="model-group">
-      <label>🧠 Thinker Model</label>
-      <select id="thinker-model">
-        <option value="anthropic/claude-haiku-4.5">Claude Haiku 4.5 (Anthropic)</option>
-        <option value="anthropic/claude-sonnet-4.5">Claude Sonnet 4.5 (Anthropic)</option>
-        <option value="openai/gpt-4o-mini">GPT-4o Mini (OpenAI)</option>
-        <option value="openai/gpt-4o">GPT-4o (OpenAI)</option>
-        <option value="google/gemini-flash-2.0">Gemini Flash 2.0 (Google)</option>
-      </select>
-    </div>
-    <div class="model-group">
-      <label>🔍 Guesser Model</label>
-      <select id="guesser-model">
-        <option value="openai/gpt-4o-mini" selected>GPT-4o Mini (OpenAI)</option>
-        <option value="openai/gpt-4o">GPT-4o (OpenAI)</option>
-        <option value="anthropic/claude-haiku-4.5">Claude Haiku 4.5 (Anthropic)</option>
-        <option value="anthropic/claude-sonnet-4.5">Claude Sonnet 4.5 (Anthropic)</option>
-        <option value="google/gemini-flash-2.0">Gemini Flash 2.0 (Google)</option>
-      </select>
-    </div>
+  <div class="secret empty" id="secret"><small>Secret word</small><b id="secretWord">— not chosen yet —</b></div>
+
+  <div class="flow">
+    <div class="node t" id="nT">🧠 Thinker</div>
+    <div class="wire" id="w1"><i></i></div>
+    <div class="node r" id="nR">⚖️ Referee</div>
+    <div class="wire" id="w2"><i></i></div>
+    <div class="node g" id="nG">🔍 Guesser</div>
   </div>
 
-  <div class="buttons">
-    <button class="btn" id="btn-start" onclick="startGame()">▶ Start Game</button>
-    <button class="btn btn-stop hidden" id="btn-stop" onclick="stopGame()">⏹ Stop</button>
-    <button class="btn hidden" id="btn-reset" onclick="resetGame()">🔄 Play Again</button>
-  </div>
+  <div class="pips" id="pips"></div>
 
-  <!-- AGENT STATUS CARDS -->
-  <div class="agent-cards" id="agent-cards">
-    <div class="agent-card thinker-card" id="thinker-card">
-      <div class="agent-avatar">🧠</div>
-      <div class="agent-info">
-        <div class="agent-name">Thinker</div>
-        <div class="agent-model" id="thinker-model-display">—</div>
-        <div class="agent-status-row">
-          <div class="agent-status-dot" id="thinker-dot"></div>
-          <div class="agent-status-text" id="thinker-status">idle</div>
-        </div>
-        <div class="strikes-display" id="thinker-strikes-display"></div>
+  <div class="arena">
+    <div class="side thinker" id="sT">
+      <div class="card">
+        <div class="bot" id="botT"><div class="ant"></div><div class="dots">💭</div>
+          <div class="head"><div class="eyes"><div class="eye"></div><div class="eye"></div></div><div class="mouth"></div></div><div class="body"></div></div>
+        <div class="role">THINKER</div><div class="model" id="mT"></div><div class="status" id="stT">idle</div>
       </div>
     </div>
 
-    <div class="agent-card referee-card" id="referee-card">
-      <div class="agent-avatar">⚖️</div>
-      <div class="agent-info">
-        <div class="agent-name">Referee</div>
-        <div class="agent-model">Orchestrator</div>
-        <div class="agent-status-row">
-          <div class="agent-status-dot" id="referee-dot"></div>
-          <div class="agent-status-text" id="referee-status">idle</div>
-        </div>
-      </div>
+    <div>
+      <div class="chat" id="chat"></div>
+      <div class="banner hidden" id="banner"></div>
     </div>
 
-    <div class="agent-card guesser-card" id="guesser-card">
-      <div class="agent-avatar">🔍</div>
-      <div class="agent-info">
-        <div class="agent-name">Guesser</div>
-        <div class="agent-model" id="guesser-model-display">—</div>
-        <div class="agent-status-row">
-          <div class="agent-status-dot" id="guesser-dot"></div>
-          <div class="agent-status-text" id="guesser-status">idle</div>
-        </div>
+    <div class="side guesser" id="sG">
+      <div class="card">
+        <div class="bot" id="botG"><div class="ant"></div><div class="dots">💭</div>
+          <div class="head"><div class="eyes"><div class="eye"></div><div class="eye"></div></div><div class="mouth"></div></div><div class="body"></div></div>
+        <div class="role">GUESSER</div><div class="model" id="mG"></div><div class="status" id="stG">idle</div>
       </div>
     </div>
-  </div>
-
-  <!-- SPECTATOR PANEL (visible during gameplay) -->
-  <div class="spectator-panel" id="spectator-panel">
-    <span class="label">SECRET:</span>
-    <span class="secret-word" id="secret-word"></span>
-    <span class="secret-emoji" id="secret-emoji"></span>
-  </div>
-
-  <!-- A2A FLOW INDICATOR -->
-  <div class="a2a-flow" id="a2a-flow">
-    <div class="a2a-flow-step" id="a2a-step">Click Start to begin</div>
-  </div>
-
-  <!-- COMIC STRIP -->
-  <div class="comic-strip" id="comic-strip">
-    <!-- THINKER ROBOT (left) -->
-    <div class="robot-col thinker-side">
-      <div class="robot-char float" id="thinker-robot">
-        <div class="thinker-bulb glow" id="thinker-bulb"></div>
-        <div class="thinker-body"></div>
-        <div class="thinker-face">
-          <div class="thinker-eye"></div>
-          <div class="thinker-eye squint"></div>
-        </div>
-        <div class="thinker-brain"></div>
-        <div class="thinker-leg left"></div>
-        <div class="thinker-leg right"></div>
-      </div>
-      <div class="robot-label thinker">🧠 THINKER</div>
-      <div class="robot-strikes" id="thinker-strikes"></div>
-    </div>
-
-    <!-- GAME BOARD (center) -->
-    <div class="game-board" id="game-board">
-      <div class="board-header" id="board-header">
-        <span class="turn-disp" id="turn-disp">Turn: --</span>
-        <span class="strike-disp" id="strike-disp">⚖️ Referee caught 0/3 lies</span>
-      </div>
-      <div class="board-empty" id="board-empty">
-        Select models and click Start<br>to watch two AI agents play 20 Questions.<br><small style="color:#8b949e">The Referee validates every answer. 3 lies = Thinker disqualified.</small>
-      </div>
-    </div>
-
-    <!-- GUESSER ROBOT (right) -->
-    <div class="robot-col guesser-side">
-      <div class="robot-char float" id="guesser-robot">
-        <div class="guesser-antenna"></div>
-        <div class="guesser-body"></div>
-        <div class="guesser-face">
-          <div class="guesser-eye"></div>
-          <div class="guesser-eye"></div>
-        </div>
-        <div class="guesser-tool"></div>
-        <div class="guesser-leg left"></div>
-        <div class="guesser-leg right"></div>
-      </div>
-      <div class="robot-label guesser">🔍 GUESSER</div>
-    </div>
-  </div>
-
-  <div class="gameover" id="gameover">
-    <div class="winner-banner" id="winner-banner"></div>
-    <div class="reveal">
-      <div class="big-emoji" id="reveal-emoji"></div>
-      <div class="word" id="reveal-word"></div>
-      <div class="score" id="reveal-score"></div>
-    </div>
-    <button class="btn" onclick="resetGame()">🔄 Play Again</button>
   </div>
 </div>
-
-<!-- Concept overlay -->
-<div class="overlay" id="overlay">
-  <div class="card" id="overlay-card">
-    <div class="big-emoji" id="overlay-emoji"></div>
-    <div class="title">The Thinker has chosen...</div>
-    <div class="cat-name" id="overlay-cat"></div>
-    <div class="hint" id="overlay-hint"></div>
-    <div class="reveal-word" id="overlay-word" style="display:none"></div>
-  </div>
-</div>
+<button class="info-btn" id="infoBtn">📖 How it works</button>
+<div class="backdrop" id="backdrop"></div>
+<aside class="drawer" id="drawer" aria-label="How it works">
+  <div class="d-head"><h3>🔧 How it works</h3><button class="d-x" id="dClose" aria-label="Close">✕</button></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="d-body" id="dBody"></div>
+</aside>
+<div class="overlay" id="overlay"></div>
 
 <script>
-(function(){
-  const gameBoard = document.getElementById('game-board');
-  const boardEmpty = document.getElementById('board-empty');
-  const boardHeader = document.getElementById('board-header');
-  const turnDisp = document.getElementById('turn-disp');
-  const strikeDisp = document.getElementById('strike-disp');
-  const thinkerStrikes = document.getElementById('thinker-strikes');
-  const thinkerStrikesDisplay = document.getElementById('thinker-strikes-display');
-  const guesserRobot = document.getElementById('guesser-robot');
-  const thinkerRobot = document.getElementById('thinker-robot');
-  const thinkerBulb = document.getElementById('thinker-bulb');
-  const gameover = document.getElementById('gameover');
-  const winnerBanner = document.getElementById('winner-banner');
-  const revealEmoji = document.getElementById('reveal-emoji');
-  const revealWord = document.getElementById('reveal-word');
-  const revealScore = document.getElementById('reveal-score');
-  const overlay = document.getElementById('overlay');
-  const overlayEmoji = document.getElementById('overlay-emoji');
-  const overlayCat = document.getElementById('overlay-cat');
-  const overlayHint = document.getElementById('overlay-hint');
-  const overlayWord = document.getElementById('overlay-word');
-  const btnStart = document.getElementById('btn-start');
-  const btnStop = document.getElementById('btn-stop');
-  const btnReset = document.getElementById('btn-reset');
-  const thinkerModel = document.getElementById('thinker-model');
-  const guesserModel = document.getElementById('guesser-model');
-  const a2aFlow = document.getElementById('a2a-flow');
-  const a2aStep = document.getElementById('a2a-step');
+const $ = id => document.getElementById(id);
+const chat = $('chat'), MAX = 20, HINT = '<div class="empty-hint">Pick two models and press <b>Start</b>.</div>';
+let models = [], typingEl = null, status = 'idle';
+chat.innerHTML = HINT;
 
-  // Agent card elements
-  const thinkerCard = document.getElementById('thinker-card');
-  const thinkerDot = document.getElementById('thinker-dot');
-  const thinkerStatus = document.getElementById('thinker-status');
-  const thinkerModelDisplay = document.getElementById('thinker-model-display');
-  const refereeCard = document.getElementById('referee-card');
-  const refereeDot = document.getElementById('referee-dot');
-  const refereeStatus = document.getElementById('referee-status');
-  const guesserCard = document.getElementById('guesser-card');
-  const guesserDot = document.getElementById('guesser-dot');
-  const guesserStatus = document.getElementById('guesser-status');
-  const guesserModelDisplay = document.getElementById('guesser-model-display');
-
-  let overlayTimer = null;
-  let currentStrikes = 0;
-  const spectatorPanel = document.getElementById('spectator-panel');
-  const secretWord = document.getElementById('secret-word');
-  const secretEmoji = document.getElementById('secret-emoji');
-
-  function escapeHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
+const label = id => (models.find(m => m.id === id) || {label: id || ''}).label;
+function fillSelects(list, tm, gm){
+  models = list;
+  for (const [el, val] of [[$('tm'), tm], [$('gm'), gm]]) {
+    if (el.options.length !== list.length) el.innerHTML = list.map(m => `<option value="${m.id}">${m.label}</option>`).join('');
+    if (val && !el.disabled) el.value = val;
   }
+}
+function buildPips(){ $('pips').innerHTML = Array.from({length: MAX}, (_, i) => `<div class="pip" id="p${i+1}">${i+1}</div>`).join(''); }
+buildPips();
 
-  // ── Agent card helpers ──
-  function setAgentStatus(card, dot, statusEl, text, active) {
-    dot.classList.remove('pulse');
-    statusEl.textContent = text;
-    if (active) {
-      card.classList.add('active');
-      dot.classList.add('pulse');
-      if (text.includes('pulse')) dot.classList.add('pulse');
-    } else {
-      card.classList.remove('active');
-    }
-    // Auto-pulse on "picking", "thinking", "answering", "asking", "orchestrating", "validating"
-    if (/thinking|picking|answering|asking|orchestrating|validating/i.test(text)) {
-      dot.classList.add('pulse');
-    }
+function setPlaying(p){
+  $('start').classList.toggle('hidden', p);
+  $('stop').classList.toggle('hidden', !p);
+  $('tm').disabled = $('gm').disabled = p;
+}
+
+function setActive(agent){
+  window.__agent = agent; diagram(agent);
+  $('sT').classList.toggle('active', agent === 'thinker');
+  $('sG').classList.toggle('active', agent === 'guesser');
+  $('botT').classList.toggle('thinking', agent === 'thinker');
+  $('botG').classList.toggle('thinking', agent === 'guesser');
+  $('nT').classList.toggle('on', agent === 'thinker');
+  $('nG').classList.toggle('on', agent === 'guesser');
+  $('nR').classList.toggle('on', agent === 'referee');
+  // packets: guesser->referee (leftward on w2), referee->thinker (leftward on w1)
+  $('w1').className = 'wire' + (agent === 'referee' || agent === 'thinker' ? ' l' : '');
+  $('w2').className = 'wire' + (agent === 'referee' ? ' l' : agent === 'guesser' ? ' r' : '');
+  const idle = status === 'playing' ? 'waiting' : 'idle';
+  $('stT').textContent = agent === 'thinker' ? 'thinking about answer…' : idle;
+  $('stG').textContent = agent === 'guesser' ? 'forming a question…' : idle;
+  if (agent === 'referee') { $('stT').textContent = 'receiving question…'; }
+}
+
+function talk(botId, ms){ const b = $(botId); b.classList.add('talking'); setTimeout(() => b.classList.remove('talking'), ms || 1200); }
+function react(botId, cls){ const b = $(botId); b.classList.remove('nod','shake'); void b.offsetWidth; b.classList.add(cls); setTimeout(() => b.classList.remove(cls), 1100); }
+
+function scroll(){ chat.scrollTop = chat.scrollHeight; }
+function clearTyping(){ typingEl?.remove(); typingEl = null; }
+function showTyping(kind){
+  clearTyping();
+  typingEl = document.createElement('div');
+  typingEl.className = `msg typing ${kind}`;
+  typingEl.innerHTML = `<small>${kind === 'q' ? 'Guesser' : 'Thinker'}</small><span></span><span></span><span></span>`;
+  chat.appendChild(typingEl); scroll();
+}
+function clearHint(){ chat.querySelector('.empty-hint')?.remove(); }
+function addQuestion(turn, text){
+  clearTyping(); clearHint();
+  const d = document.createElement('div'); d.className = 'msg q';
+  const s = document.createElement('small'); s.textContent = `Guesser · Q${turn}`;
+  d.append(s, text);
+  chat.appendChild(d); scroll(); talk('botG');
+}
+function addAnswer(turn, ans, quiet, why){
+  clearTyping(); clearHint();
+  const d = document.createElement('div');
+  d.className = 'msg a ' + (ans === 'CORRECT' ? 'correct' : ans === 'YES' ? 'yes' : '');
+  d.innerHTML = `<small>Thinker · A${turn}</small><div class="ans">${ans === 'CORRECT' ? '🎉 CORRECT!' : ans}</div>`;
+  if (why){ const w = document.createElement('div'); w.className = 'why'; w.textContent = '💭 ' + why; d.appendChild(w); }
+  chat.appendChild(d); scroll();
+  if (!quiet){ talk('botT', 700); react('botT', ans === 'NO' ? 'shake' : 'nod'); }
+  const p = $('p' + turn);
+  if (p){ p.classList.remove('now'); p.classList.add(ans === 'CORRECT' ? 'win' : ans === 'YES' ? 'yes' : 'no'); }
+}
+
+function resetUI(){
+  chat.innerHTML = HINT; buildPips();
+  $('banner').classList.add('hidden'); $('overlay').innerHTML = '';
+  $('secret').classList.add('empty'); $('secretWord').textContent = '— not chosen yet —';
+  for (const s of ['sT','sG']) $(s).classList.remove('win','lose');
+  clearTyping(); status = 'idle'; setPlaying(false); setActive(null);
+}
+
+function showSecret(c){ $('secret').classList.remove('empty'); $('secretWord').textContent = `${c.emoji} ${c.word.toUpperCase()}  ·  ${c.category}`; }
+
+function renderState(s){
+  fillSelects(s.models || models, s.thinkerModel, s.guesserModel);
+  $('mT').textContent = label(s.thinkerModel); $('mG').textContent = label(s.guesserModel);
+  if (s.status === 'idle') return resetUI();
+  chat.innerHTML = ''; buildPips(); $('banner').classList.add('hidden');
+  for (const x of ['sT','sG']) $(x).classList.remove('win','lose');
+  status = s.status;
+  if (s.concept) showSecret(s.concept);
+  for (const h of s.history){ addQuestion(h.turn, h.question); if (h.answer) addAnswer(h.turn, h.answer, true, h.why); }
+  if (s.status === 'playing') {
+    setPlaying(true);
+    const last = s.history.at(-1);
+    if (s.currentTurn && !(last && last.answer)) $('p' + s.currentTurn)?.classList.add('now');
+    setActive(s.thinking);
+    if (s.thinking === 'guesser') showTyping('q'); else if (s.thinking === 'thinker' && s.concept) showTyping('a');
+    if (!s.history.length && !s.concept) chat.innerHTML = '<div class="empty-hint">The Thinker is choosing a secret…</div>';
+  } else if (s.status === 'over') showOver(s);
+}
+
+function showOver(s){
+  clearTyping(); setActive(null); setPlaying(false); status = 'over';
+  if (s.concept) showSecret(s.concept);
+  const b = $('banner'); b.classList.remove('hidden');
+  const won = s.winner === 'guesser', err = s.winner === 'error';
+  b.style.setProperty('--c', err ? 'var(--no)' : won ? 'var(--guess)' : 'var(--think)');
+  const w = s.concept ? `${s.concept.emoji} ${s.concept.word}` : '';
+  const n = s.history.length;
+  b.innerHTML = err
+    ? `<h2>⚠️ Game aborted</h2><p></p>`
+    : won ? `<h2>🔍 Guesser wins!</h2><p>Found <b>${w}</b> in ${n} question${n > 1 ? 's' : ''}.</p>`
+          : `<h2>🧠 Thinker wins!</h2><p>Nobody guessed <b>${w}</b> in 20 questions.</p>`;
+  if (err) b.querySelector('p').textContent = s.reason || 'LLM error';
+  const btn = document.createElement('button'); btn.className = 'btn go'; btn.textContent = '↻ Play again'; btn.onclick = startGame;
+  b.appendChild(btn);
+  if (!err){ $(won ? 'sG' : 'sT').classList.add('win'); $(won ? 'sT' : 'sG').classList.add('lose'); if (won) confetti(); }
+  b.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+function confetti(){
+  const cols = ['#ff5d6c','#ffc94d','#4da3ff','#3ddc97','#6cf0ff'];
+  for (let i = 0; i < 70; i++){
+    const c = document.createElement('div'); c.className = 'confetti';
+    c.style.left = Math.random() * 100 + 'vw'; c.style.background = cols[i % 5];
+    c.style.animationDuration = 2 + Math.random() * 2.5 + 's'; c.style.animationDelay = Math.random() * .6 + 's';
+    document.body.appendChild(c); setTimeout(() => c.remove(), 5500);
   }
+}
 
-  function setAllAgentStatus(agent) {
-    // Reset all
-    setAgentStatus(thinkerCard, thinkerDot, thinkerStatus, 'idle', false);
-    setAgentStatus(refereeCard, refereeDot, refereeStatus, 'idle', false);
-    setAgentStatus(guesserCard, guesserDot, guesserStatus, 'idle', false);
+async function startGame(){
+  resetUI(); status = 'playing'; setPlaying(true); setActive('thinker');
+  chat.innerHTML = '<div class="empty-hint">The Thinker is choosing a secret…</div>';
+  $('stT').textContent = 'choosing a secret…';
+  await fetch('/start', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({thinkerModel: $('tm').value, guesserModel: $('gm').value})});
+}
+async function stopGame(){ await fetch('/stop', {method: 'POST'}); }
+$('start').onclick = startGame; $('stop').onclick = stopGame;
 
-    if (agent === 'thinker') setAgentStatus(thinkerCard, thinkerDot, thinkerStatus, 'picking concept…', true);
-    else if (agent === 'guesser') setAgentStatus(guesserCard, guesserDot, guesserStatus, 'thinking…', true);
-    else if (agent === 'referee') setAgentStatus(refereeCard, refereeDot, refereeStatus, 'orchestrating', true);
+const es = new EventSource('/events');
+const on = (n, f) => es.addEventListener(n, e => f(JSON.parse(e.data)));
+on('sync', renderState);
+on('reset', renderState);
+on('concept', c => {
+  showSecret(c);
+  $('overlay').innerHTML = `<div class="pop"><div class="e">${c.emoji}</div><div class="t">Thinker chose a ${c.category}</div><div class="w">${c.word.toUpperCase()}</div></div>`;
+  setTimeout(() => { $('overlay').innerHTML = ''; }, 3100);
+  $('stT').textContent = 'secret chosen!'; talk('botT', 1500);
+  chat.innerHTML = '<div class="empty-hint">Secret chosen — questions incoming…</div>';
+});
+on('thinking', d => {
+  setActive(d.agent);
+  if (d.turn) $('p' + d.turn)?.classList.add('now');
+  if (d.agent === 'guesser') showTyping('q');
+  else if (d.agent === 'thinker') showTyping('a');
+  else clearTyping();
+});
+on('question', d => addQuestion(d.turn, d.question));
+on('answer', d => { addAnswer(d.turn, d.answer, false, d.why); setActive(null); });
+on('gameover', showOver);
+
+// ── How-it-works drawer ──
+const INTRO = {
+  overview: `Three agents, one rule: <b>they only talk through the Referee</b>. The Guesser never sees the secret; the Thinker never sees the Guesser's history. Each turn is four A2A messages. Click a tab to see each agent's definition.`,
+  referee: `<b>The orchestrator.</b> Picks the secret, shows it to you, then loops up to 20 turns: ask the Guesser, forward to the Thinker, relay the answer. It declares the winner. In this demo the Referee is plain Express code, so it costs no tokens.`,
+  thinker: `<b>The keeper of the secret.</b> Gets one question at a time. It writes one short sentence of reasoning, then commits to YES or NO. That reasoning step stops reflex mistakes on ambiguous questions, and it's shown under each answer.`,
+  guesser: `<b>The detective.</b> Sees only the Q&amp;A history. Starts broad, narrows down, and starts guessing specific candidates from about question 10. Told that answers can occasionally be wrong, so it re-tests surprising ones.`,
+};
+const TABS = [['overview','Overview',''],['referee','Referee','var(--ref)'],['thinker','Thinker','var(--think)'],['guesser','Guesser','var(--guess)'],['full','Full YAML','']];
+let yamlText = '', rawYaml = '', curTab = 'overview';
+// Reflect the model dropdowns in the YAML shown in the panel
+function applyModels(){
+  let t = rawYaml;
+  for (const [llm, sel] of [['thinker_llm', $('tm')], ['guesser_llm', $('gm')]])
+    if (sel.value) t = t.replace(new RegExp(`(^  ${llm}:[\\s\\S]*?^    model:\\s*)\\S+`, 'm'), `$1${sel.value}`);
+  yamlText = t;
+}
+$('tm').addEventListener('change', () => { applyModels(); if (document.body.classList.contains('drawer-open')) renderTab(curTab); });
+$('gm').addEventListener('change', () => { applyModels(); if (document.body.classList.contains('drawer-open')) renderTab(curTab); });
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function hl(src){
+  let blockIndent = -1;
+  return src.split('\n').map(line => {
+    const ind = line.length - line.trimStart().length;
+    if (blockIndent >= 0 && (line.trim() === '' || ind > blockIndent)) return `<span class="y-s">${esc(line)}</span>`;
+    blockIndent = -1;
+    if (/^\s*#/.test(line)) return `<span class="y-c">${esc(line)}</span>`;
+    const m = line.match(/^(\s*(?:- )?)([\w.-]+)(:)(.*)$/);
+    if (!m) return esc(line);
+    if (/^\s*[|>]\s*$/.test(m[4])) blockIndent = ind;
+    const v = m[4].trim();
+    const val = !v ? '' : /^[|>]$/.test(v) ? ` <span class="y-v">${v}</span>` : ` <span class="y-v">${esc(v)}</span>`;
+    return `${esc(m[1])}<span class="y-k">${m[2]}</span>:${val}`;
+  }).join('\n');
+}
+function block(text, header, indent){
+  const lines = text.split('\n'), out = []; let on = false;
+  for (const l of lines){
+    const m = l.match(/^(\s*)([\w.-]+):\s*$/);
+    if (m && m[1].length === indent){ on = false; }
+    if (new RegExp(`^ {${indent}}${header}:`).test(l)) on = true;
+    if (on) out.push(l);
+    if (on === false && out.length && /^\S/.test(l)) break;
   }
-
-  function setA2aFlow(html) {
-    a2aFlow.classList.add('visible');
-    a2aStep.innerHTML = html;
+  return out.join('\n').trimEnd();
+}
+function yamlFor(tab){
+  if (tab === 'full') return yamlText;
+  const agent = block(yamlText.slice(yamlText.indexOf('\nagents:')), tab, 2);
+  const mm = agent.match(/^\s+model:\s*(\S+)/m);
+  const model = mm ? block(yamlText.slice(0, yamlText.indexOf('\nagents:')), mm[1], 2) : '';
+  return { agent, model };
+}
+function diagramSvg(){
+  return `<svg class="diagram" id="dia" viewBox="0 0 440 290" role="img" aria-label="Agent message flow">
+  <defs><marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#7d86b8"/></marker></defs>
+  <path class="de" data-e="1" d="M270 86 L330 196"/>
+  <path class="de" data-e="2" d="M398 196 Q 392 100 292 70"/>
+  <path class="de" data-e="3" d="M170 86 L110 196"/>
+  <path class="de" data-e="4" d="M42 196 Q 48 100 148 70"/>
+  <g class="dl"><circle cx="305" cy="135" r="9"/><text x="305" y="139">1</text><circle cx="378" cy="120" r="9"/><text x="378" y="124">2</text>
+  <circle cx="135" cy="135" r="9"/><text x="135" y="139">3</text><circle cx="62" cy="120" r="9"/><text x="62" y="124">4</text></g>
+  <g class="dn referee" data-a="referee"><rect x="150" y="30" width="140" height="56" rx="12"/><text x="220" y="55">⚖️ Referee</text><text class="sm" x="220" y="72">orchestrator · A2A</text></g>
+  <g class="dn thinker" data-a="thinker"><rect x="20" y="196" width="130" height="60" rx="12"/><text x="85" y="222">🧠 Thinker</text><text class="sm" x="85" y="240">knows the secret</text></g>
+  <g class="dn guesser" data-a="guesser"><rect x="290" y="196" width="130" height="60" rx="12"/><text x="355" y="222">🔍 Guesser</text><text class="sm" x="355" y="240">asks yes/no</text></g>
+  <text class="sm" x="220" y="278" style="fill:#5d668f;font:10px system-ui;text-anchor:middle">each agent → its own LLM via OpenRouter</text>
+  </svg>
+  <ul class="legend">
+    <li><b>1</b>Referee asks the Guesser for the next question</li>
+    <li><b>2</b>Guesser returns a yes/no question</li>
+    <li><b>3</b>Referee forwards it to the Thinker (checks if it names the secret)</li>
+    <li><b>4</b>Thinker answers YES or NO; Referee records it and loops</li>
+  </ul>`;
+}
+function diagram(agent){
+  const svg = document.getElementById('dia'); if (!svg) return;
+  svg.querySelectorAll('.dn').forEach(n => n.classList.toggle('on', n.dataset.a === agent));
+  const edges = { guesser: ['1'], referee: ['2','3'], thinker: ['4'] }[agent] || [];
+  svg.querySelectorAll('.de').forEach(e => e.classList.toggle('on', edges.includes(e.dataset.e)));
+}
+function renderTab(tab){
+  curTab = tab; applyModels();
+  $('tabs').innerHTML = TABS.map(([k, l, c]) => `<button class="tab${k === tab ? ' on' : ''}" data-t="${k}" ${c ? `style="--c:${c}"` : ''}>${l}</button>`).join('');
+  const b = $('dBody');
+  if (tab === 'overview') {
+    b.innerHTML = `<p class="d-intro">${INTRO.overview}</p>${diagramSvg()}`;
+    diagram(window.__agent || null);
+  } else if (tab === 'full') {
+    b.innerHTML = `<p class="d-intro">The whole <b>game.yaml</b>, served live from the repo.</p><div class="d-label">game.yaml <button class="copy" data-copy="full">copy</button></div><pre class="yaml">${hl(yamlText)}</pre>`;
+  } else {
+    const y = yamlFor(tab);
+    b.innerHTML = `<p class="d-intro">${INTRO[tab]}</p><div class="d-label">agents.${tab} <button class="copy" data-copy="agent">copy</button></div><pre class="yaml">${hl(y.agent)}</pre>` +
+      (y.model ? `<div class="d-label">models <button class="copy" data-copy="model">copy</button></div><pre class="yaml">${hl(y.model)}</pre>` : '');
   }
-
-  function hideA2aFlow() {
-    a2aFlow.classList.remove('visible');
-  }
-
-  function updateStrikes(strikes) {
-    currentStrikes = strikes || 0;
-    strikeDisp.textContent = '⚖️ Referee caught ' + currentStrikes + '/3 lies';
-    if (currentStrikes > 0) {
-      strikeDisp.classList.add('warn');
-    } else {
-      strikeDisp.classList.remove('warn');
-    }
-    thinkerStrikes.textContent = currentStrikes > 0 ? ('⚠️ Thinker lied: ' + currentStrikes + '/3') : '';
-    thinkerStrikesDisplay.textContent = '⚠️ Thinker lied: ' + currentStrikes + '/3';
-
-    thinkerStrikesDisplay.className = 'strikes-display';
-    if (currentStrikes >= 2) {
-      thinkerStrikesDisplay.className += ' danger';
-    } else if (currentStrikes > 0) {
-      thinkerStrikesDisplay.className += ' warn';
-    }
-
-    if (currentStrikes >= 2) {
-      thinkerRobot.style.filter = 'drop-shadow(0 0 10px var(--thinker-glow))';
-    } else if (currentStrikes > 0) {
-      thinkerRobot.style.filter = '';
-    } else {
-      thinkerRobot.style.filter = '';
-    }
-  }
-
-  function setRobotBobbing(agent) {
-    guesserRobot.classList.remove('bobbing');
-    thinkerRobot.classList.remove('bobbing');
-    thinkerBulb.classList.remove('glow');
-
-    if (agent === 'guesser') {
-      guesserRobot.classList.add('bobbing');
-      guesserRobot.classList.remove('float');
-    } else if (agent === 'thinker') {
-      thinkerRobot.classList.add('bobbing');
-      thinkerRobot.classList.remove('float');
-      thinkerBulb.classList.add('glow');
-    }
-  }
-
-  function clearRobotBobbing() {
-    guesserRobot.classList.remove('bobbing');
-    thinkerRobot.classList.remove('bobbing');
-    guesserRobot.classList.add('float');
-    thinkerRobot.classList.add('float');
-  }
-
-  function addSpeechBubble(agent, text, turn, extraClass) {
-    boardEmpty.style.display = 'none';
-    const row = document.createElement('div');
-    row.className = 'speech-row ' + agent + '-row';
-
-    let name = 'Referee';
-    if (agent === 'guesser') name = 'Guesser';
-    else if (agent === 'thinker') name = 'Thinker';
-
-    let label = name;
-    if (agent === 'guesser' && turn) label = name + ' — Q' + turn;
-    if (agent === 'thinker' && turn) label = name + ' — Q' + turn;
-
-    let bubClass = agent + '-bub';
-    if (extraClass) bubClass += ' ' + extraClass;
-
-    row.innerHTML = '<div class="speech-bubble ' + bubClass + '">' +
-      '<div class="bub-header">' + label + '</div>' +
-      '<div>' + escapeHtml(text) + '</div>' +
-      '</div>';
-    gameBoard.appendChild(row);
-    gameBoard.scrollTop = gameBoard.scrollHeight;
-  }
-
-  function addRefereeMsg(text) {
-      boardEmpty.style.display = 'none';
-      const row = document.createElement('div');
-      row.className = 'speech-row referee-row';
-      const bub = document.createElement('div');
-      bub.className = 'speech-bubble referee-bub';
-      bub.textContent = text;
-      row.appendChild(bub);
-      gameBoard.appendChild(row);
-      gameBoard.scrollTop = gameBoard.scrollHeight;
-    }
-
-  function showOverlay(category, emoji, word) {
-    if (overlayTimer) clearTimeout(overlayTimer);
-    overlayEmoji.textContent = emoji || '';
-    overlayCat.textContent = category || '';
-    overlayHint.textContent = word ? '' : 'A mysterious ' + ((category||'').toLowerCase()) + '...';
-    overlayWord.textContent = word || '';
-    overlayWord.style.display = word ? 'block' : 'none';
-
-    if (word) {
-      document.querySelector('#overlay .title').textContent = 'The secret concept was...';
-    } else {
-      document.querySelector('#overlay .title').textContent = 'The Thinker has chosen...';
-    }
-
-    overlay.classList.add('show');
-   if (!word) {
-      overlayTimer = setTimeout(function(){ overlay.classList.remove('show'); }, 2500);
-    } else {
-      // Auto-dismiss after 3s so Play Again button underneath is clickable
-      overlayTimer = setTimeout(function(){ overlay.classList.remove('show'); }, 3000);
-    }
-  }
-
-  function hideOverlay() {
-    overlay.classList.remove('show');
-    if (overlayTimer) clearTimeout(overlayTimer);
-  }
-
-  function showGameOver(winner, concept, score, reason) {
-    gameover.classList.add('show');
-    winnerBanner.className = 'winner-banner ' + winner;
-    revealEmoji.textContent = concept?.emoji || '';
-    revealWord.textContent = concept?.word || '';
-    revealScore.textContent = score || '';
-
-    if (reason === 'disqualified') {
-      winnerBanner.className = 'winner-banner guesser';
-      winnerBanner.textContent = '🚨 Thinker DISQUALIFIED! 3 strikes — Guesser wins!';
-    } else if (winner === 'guesser') {
-      winnerBanner.textContent = '🏆 The Guesser wins! Solved in ' + score + '!';
-    } else if (winner === 'thinker') {
-      winnerBanner.textContent = '🧠 The Thinker wins! Concept never guessed!';
-    } else {
-      winnerBanner.textContent = '⚠️ Game error — try again';
-    }
-
-    document.querySelector('#overlay .title').textContent = 'The secret concept was...';
-    btnStart.classList.add('hidden');
-    btnStop.classList.add('hidden');
-    btnReset.classList.remove('hidden');
-    turnDisp.textContent = 'Turn: --';
-    clearRobotBobbing();
-    updateStrikes(0);
-    setAllAgentStatus(null);
-    hideA2aFlow();
-
-    if (concept) {
-      showOverlay(concept.category, concept.emoji, concept.word);
-    }
-  }
-
-  function resetUI() {
-    gameBoard.innerHTML = '';
-    const empty = document.createElement('div');
-    empty.className = 'board-empty';
-    empty.id = 'board-empty';
-    empty.innerHTML = 'Select models and click Start<br>to watch two AI agents play 20 Questions.<br><small style=\"color:#8b949e\">The Referee validates every answer. 3 lies = Thinker disqualified.</small>';
-    gameBoard.appendChild(empty);
-    turnDisp.textContent = 'Turn: --';
-    updateStrikes(0);
-    gameover.classList.remove('show');
-    hideOverlay();
-    spectatorPanel.classList.remove('visible');
-    clearRobotBobbing();
-    btnStart.classList.remove('hidden');
-    btnStop.classList.add('hidden');
-    btnReset.classList.add('hidden');
-    thinkerRobot.style.filter = '';
-    setAllAgentStatus(null);
-    hideA2aFlow();
-  }
-
-  // ── SSE ──
-  const es = new EventSource('/events');
-
-  es.addEventListener('sync', function(e) {
-    const d = JSON.parse(e.data);
-    if (d.status === 'idle') { resetUI(); return; }
-    if (d.concept?.category && !d.winner) {
-      showOverlay(d.concept.category, d.concept.emoji, d.concept.word);
-      if (d.concept.word) {
-        secretWord.textContent = d.concept.word;
-        secretEmoji.textContent = ' ' + (d.concept.emoji || '');
-        spectatorPanel.classList.add('visible');
-      }
-    }
-    updateStrikes(d.strikes || 0);
-    thinkerModel.value = d.thinkerModel || 'anthropic/claude-haiku-4.5';
-    guesserModel.value = d.guesserModel || 'openai/gpt-4o-mini';
-    thinkerModelDisplay.textContent = d.thinkerModel || '—';
-    guesserModelDisplay.textContent = d.guesserModel || '—';
-    if (d.status === 'playing') {
-      btnStart.classList.add('hidden');
-      btnStop.classList.remove('hidden');
-      btnReset.classList.add('hidden');
-    }
-  });
-
-  es.addEventListener('thinking', function(e) {
-    const d = JSON.parse(e.data);
-    const agent = d.agent || d.thinking;
-    setRobotBobbing(agent);
-    setAllAgentStatus(agent);
-
-    if (agent === 'thinker') {
-      if (d.status === 'playing') {
-        setAgentStatus(thinkerCard, thinkerDot, thinkerStatus, 'picking concept…', true);
-      } else {
-        setAgentStatus(thinkerCard, thinkerDot, thinkerStatus, 'thinking…', true);
-      }
-    } else if (agent === 'guesser') {
-      setAgentStatus(guesserCard, guesserDot, guesserStatus, 'thinking…', true);
-    } else if (agent === 'referee') {
-      setAgentStatus(refereeCard, refereeDot, refereeStatus, 'orchestrating', true);
-    }
-  });
-
-  es.addEventListener('concept', function(e) {
-      const d = JSON.parse(e.data);
-            // Show secret in overlay (include word for spectator visibility)
-            showOverlay(d.category, d.emoji, d.word);
-            // Populate persistent spectator panel
-           if (d.word) {
-              secretWord.textContent = d.word;
-             secretEmoji.textContent = ' ' + (d.emoji || '');
-              spectatorPanel.classList.add('visible');
-            }
-            addRefereeMsg('The Thinker has chosen a concept from the ' + d.category + ' category. Let the questions begin!');
-      setAgentStatus(thinkerCard, thinkerDot, thinkerStatus, 'ready', false);
-    setAgentStatus(refereeCard, refereeDot, refereeStatus, 'orchestrating', false);
-    setA2aFlow('Referee <span class="a2a-arrow">→</span> <span class="a2a-agent guesser-a">Guesser</span>: <span class="a2a-text">Your turn</span>');
-  });
-
-  es.addEventListener('question', function(e) {
-    const d = JSON.parse(e.data);
-    addSpeechBubble('guesser', d.question, d.turn);
-    turnDisp.textContent = 'Turn: ' + d.turn + '/20';
-    updateStrikes(d.strikes || 0);
-    setRobotBobbing('thinker');
-    setAgentStatus(thinkerCard, thinkerDot, thinkerStatus, 'answering…', true);
-    setAgentStatus(guesserCard, guesserDot, guesserStatus, 'asked Q' + d.turn, false);
-    setAgentStatus(refereeCard, refereeDot, refereeStatus, 'waiting', false);
-    setA2aFlow('Guesser <span class="a2a-arrow">→</span> <span class="a2a-agent referee-a">Referee</span>: <span class="a2a-text">"</span><span class="a2a-val">' + escapeHtml(d.question) + '</span><span class="a2a-text">"</span>');
-  });
-
-  es.addEventListener('answer', function(e) {
-    const d = JSON.parse(e.data);
-    updateStrikes(d.strikes || 0);
-    var extra = d.strike ? 'strike-bub' : '';
-    addSpeechBubble('thinker', d.answer, d.turn, extra);
-    clearRobotBobbing();
-    setAgentStatus(thinkerCard, thinkerDot, thinkerStatus, 'answered', false);
-
-    if (d.strike) {
-      setAgentStatus(refereeCard, refereeDot, refereeStatus, '⚡ lie detected!', true);
-      setA2aFlow('<span class="a2a-agent referee-a">Referee</span>: <span class="a2a-val no">Contradiction detected ✗</span> <span class="a2a-text">(Lie ' + currentStrikes + '/3)</span>');
-    } else {
-      setAgentStatus(refereeCard, refereeDot, refereeStatus, 'validated', false);
-      setA2aFlow('<span class="a2a-agent referee-a">Referee</span>: <span class="a2a-val yes">Answer validated ✓</span>');
-    }
-  });
-
-  es.addEventListener('gameover', function(e) {
-    const d = JSON.parse(e.data);
-    clearRobotBobbing();
-    setAllAgentStatus(null);
-    hideA2aFlow();
-    var scoreText;
-    if (d.reason === 'disqualified') {
-      scoreText = 'Disqualified after ' + d.currentTurn + ' questions';
-    } else if (d.winner === 'guesser') {
-      scoreText = d.currentTurn + '/20 questions';
-    } else {
-      scoreText = '20/20 questions';
-    }
-    showGameOver(d.winner, d.concept, scoreText, d.reason);
-  });
-
-  es.addEventListener('reset', function(e) {
-    resetUI();
-  });
-
-  es.onerror = function() {
-      console.warn('SSE disconnected, polling...');
-      setInterval(function() {
-        fetch('/state').then(function(r) { return r.json(); }).then(function(d) {
-          if (d && d.status === 'playing') {
-            // SSE reconnects automatically
-          }
-        }).catch(function() {});
-      }, 2000);
-    };
-
-    // ── Actions ──
-    window.startGame = function() {
-      hideOverlay();
-      spectatorPanel.classList.remove('visible');
-      gameBoard.innerHTML = '';
-      var empty = document.createElement('div');
-      empty.className = 'board-empty';
-      empty.id = 'board-empty';
-      empty.style.display = 'none';
-      gameBoard.appendChild(empty);
-      turnDisp.textContent = 'Turn: --';
-      updateStrikes(0);
-      gameover.classList.remove('show');
-      btnStart.classList.add('hidden');
-      btnStop.classList.remove('hidden');
-      btnReset.classList.add('hidden');
-      setRobotBobbing('referee');
-      setAllAgentStatus('referee');
-      setAgentStatus(refereeCard, refereeDot, refereeStatus, 'orchestrating', true);
-      thinkerModelDisplay.textContent = thinkerModel.value;
-      guesserModelDisplay.textContent = guesserModel.value;
-      setA2aFlow('<span class="a2a-agent referee-a">Referee</span>: <span class="a2a-text">Starting game, Thinker picks a concept...</span>');
-
-      fetch('/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          thinkerModel: thinkerModel.value,
-          guesserModel: guesserModel.value,
-        }),
-      }).then(function(r) { return r.json(); }).catch(function() {});
-    };
-
-    window.stopGame = function() {
-      fetch('/stop', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      }).then(function(r) { return r.json(); }).catch(function() {});
-      resetUI();
-    };
-
-    window.resetGame = function() {
-      hideOverlay();
-      spectatorPanel.classList.remove('visible');
-      gameBoard.innerHTML = '';
-      var empty = document.createElement('div');
-      empty.className = 'board-empty';
-      empty.id = 'board-empty';
-      empty.style.display = 'none';
-      gameBoard.appendChild(empty);
-      turnDisp.textContent = 'Turn: --';
-      updateStrikes(0);
-      gameover.classList.remove('show');
-      btnStart.classList.add('hidden');
-      btnStop.classList.remove('hidden');
-      btnReset.classList.add('hidden');
-      setRobotBobbing('referee');
-      setAllAgentStatus('referee');
-      setAgentStatus(refereeCard, refereeDot, refereeStatus, 'orchestrating', true);
-      thinkerModelDisplay.textContent = thinkerModel.value;
-      guesserModelDisplay.textContent = guesserModel.value;
-      setA2aFlow('<span class="a2a-agent referee-a">Referee</span>: <span class="a2a-text">Starting new game...</span>');
-
-      fetch('/reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          thinkerModel: thinkerModel.value,
-          guesserModel: guesserModel.value,
-        }),
-      }).then(function(r) { return r.json(); }).catch(function() {});
-    };
-  })();
+  b.scrollTop = 0;
+}
+function openDrawer(){
+  document.body.classList.add('drawer-open');
+  renderTab(curTab);
+  fetch('/api/yaml', {cache: 'no-store'}).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+    .then(t => { rawYaml = t; renderTab(curTab); })
+    .catch(e => { if (!rawYaml) $('dBody').innerHTML = `<p class="d-intro">Couldn't load game.yaml (${esc(String(e.message))}). Reload the page and try again.</p>`; });
+}
+function closeDrawer(){ document.body.classList.remove('drawer-open'); }
+$('infoBtn').onclick = openDrawer; $('dClose').onclick = closeDrawer; $('backdrop').onclick = closeDrawer;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+$('tabs').addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) renderTab(t.dataset.t); });
+$('dBody').addEventListener('click', e => {
+  const c = e.target.closest('.copy'); if (!c) return;
+  const y = curTab === 'full' ? yamlText : yamlFor(curTab);
+  navigator.clipboard?.writeText(typeof y === 'string' ? y : y[c.dataset.copy]);
+  c.textContent = 'copied ✓'; setTimeout(() => c.textContent = 'copy', 1200);
+});
 </script>
 </body>
 </html>

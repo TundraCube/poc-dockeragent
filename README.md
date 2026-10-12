@@ -1,47 +1,79 @@
-# Tic-Tac-Toe AI vs AI Spectator
+# 🎯 20 Questions — Agent Arena
 
-Two AI agents play tic-tac-toe against each other with a referee orchestrating, and a real-time web UI for spectators.
+Two LLM agents play 20 Questions against each other while a Referee routes their messages. You watch, with a live UI, animated robots and a side panel that shows the agent definitions.
 
-## Architecture
+![Game UI](docs/screenshot.png)
 
-- **Player X** — center-first heuristic
-- **Player O** — block-first heuristic (blocks X wins, tries to win, then center/corners/edges)
-- **Referee** — game loop, validates moves, checks win conditions, broadcasts state
-- **Spectator UI** — dark-themed single-page app with real-time SSE updates
+## How it works
 
-## Quick Start
+| Agent | Job | Default model |
+|---|---|---|
+| **Referee** | Picks the secret, routes every message, declares the winner. Plain Express code, no LLM calls. | — |
+| **Thinker** | Knows the secret. Writes one short sentence of reasoning, then answers `YES` or `NO`. | Claude Sonnet 4.5 |
+| **Guesser** | Never sees the secret. Asks one yes/no question per turn and guesses from about question 10. | GPT-4o Mini |
+
+Each turn is four A2A messages: Referee asks Guesser → Guesser returns a question → Referee forwards it to Thinker → Thinker answers, Referee records it.
+A question counts as a win only when it names the secret as the **single** candidate. Hedged questions such as "a park or a forest?" are answered normally.
+
+The **📖 How it works** button opens a side panel with the live agent YAML (it follows the model dropdowns), the message-flow diagram and a short intro per agent.
+
+![How it works panel](docs/panel.png)
+
+## Run
 
 ```bash
 npm install
-npm start
+echo "sk-or-..." > ~/prototypage_key.config     # OpenRouter key, one line
+npm start                                         # http://localhost:3200
 ```
 
-Opens at **http://localhost:3200** — game auto-plays on load.
+Without a key the game falls back to simple built-in heuristics. `OPENROUTER_API_KEY` is also read from the environment, and `PORT` overrides 3200.
 
-## How It Works
+### Keep it running (systemd user service)
 
-1. `server.js` starts an Express server that serves the UI and streams game state via Server-Sent Events
-2. `game-runner.js` runs the game loop: each "agent" thinks for 1-2 seconds, then posts its move to the server
-3. The browser receives state updates in real time and animates the board
-
-## File Structure
-
-```
-.
-├── server.js         # Express + SSE server
-├── game-runner.js    # Game loop with agent strategies
-├── game.yaml         # Docker Agent YAML (reference — for full
-│                     # docker-agent deployment with separate containers)
-├── public/
-│   └── index.html    # Spectator UI
-└── package.json
+```ini
+# ~/.config/systemd/user/poc-20q.service
+[Service]
+WorkingDirectory=/path/to/poc-dockeragent
+ExecStart=/usr/bin/env node server.js
+Restart=always
+[Install]
+WantedBy=default.target
 ```
 
-## UI Features
+```bash
+systemctl --user enable --now poc-20q
+```
 
-- 3×3 board with X (blue) and O (green) markings
-- Pulsing "thinking" dot next to the current player
-- Last move highlighted with a border
-- Winning line animation
-- Move history log
-- "Play Again" button to restart
+### Tailscale
+
+```bash
+tailscale serve --bg --https=9443 http://localhost:3200
+```
+
+## API
+
+| Endpoint | |
+|---|---|
+| `GET /events` | SSE stream: `sync`, `thinking`, `concept`, `question`, `answer`, `gameover`, `reset` |
+| `GET /state` | Current game state |
+| `GET /models` | Selectable models |
+| `GET /api/yaml` | `game.yaml`, shown in the side panel |
+| `POST /start` `{thinkerModel, guesserModel}` | Start (or restart) a game |
+| `POST /stop` | Cancel the running game immediately (in-flight LLM calls are aborted) |
+
+## Files
+
+```
+server.js        Express + SSE server, game loop, LLM calls
+public/index.html  Spectator UI: robots, chat, progress pips, side panel
+game.yaml        docker-agent-style definition of the three agents
+docs/            Screenshots
+```
+
+## Notes
+
+- **Model choice matters.** In probes with the secret "volcano", Haiku 4.5 answered 4/7 questions correctly, GPT-4o 6/7, Sonnet 4.5 7/7. A weak Thinker can mislead the Guesser, which is why Sonnet is the default.
+- The Thinker's reasoning line is shown to spectators only; the Guesser sees just question and answer.
+- No strikes or anti-cheat: the Thinker is simply instructed to be honest.
+- `game.yaml` mirrors the prompts in `server.js` but is a reference, not executed by a docker-agent runtime.
